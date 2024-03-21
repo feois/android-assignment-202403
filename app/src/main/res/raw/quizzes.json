@@ -29,7 +29,22 @@
       {
         "question": "Write an essay",
         "type": 0,
-        "answers": ["Write you essay here (This hint is optional)"]
+        "hint": "long text"
+      },
+      {
+        "question": "1+2+3=?",
+        "type": 0,
+        "hint": "integer"
+      },
+      {
+        "question": "1÷2=?",
+        "type": 0,
+        "hint": "decimal"
+      },
+      {
+        "question": "write your name",
+        "type": 0,
+        "hint": "text"
       }
     ]
   },
