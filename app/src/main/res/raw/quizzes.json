@@ -1,11 +1,48 @@
 [
   {
-    "name": "Quiz 1"
+    "name": "Quiz 1",
+    "contents": [
+      {
+        "question": "1 + 1 = ?",
+        "type": 1,
+        "answers": [
+          "1",
+          "2",
+          "3",
+          "4"
+        ]
+      },
+      {
+        "question": "Choose all numbers",
+        "type": 3,
+        "answers": [
+          "1",
+          "abc",
+          "+-*/",
+          "!@#$",
+          "2",
+          ":;,.",
+          "3",
+          "()[]{}"
+        ]
+      },
+      {
+        "question": "Write an essay",
+        "type": 0,
+        "answers": ["Write you essay here (This hint is optional)"]
+      }
+    ]
   },
   {
-    "name": "Quiz 2"
+    "name": "Quiz 2",
+    "contents": [
+
+    ]
   },
   {
-    "name": "Quiz 3"
+    "name": "Quiz 3",
+    "contents": [
+
+    ]
   }
 ]

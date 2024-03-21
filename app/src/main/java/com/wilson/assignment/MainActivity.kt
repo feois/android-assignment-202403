@@ -22,15 +22,17 @@ class MainActivity : AppCompatActivity() {
             insets
         }
 
+        initQuizzes(resources)
+
         val tabs = findViewById<ViewPager2>(R.id.tabs)
         val menu = findViewById<BottomNavigationView>(R.id.menu)
 
-        tabs.adapter = object: FragmentStateAdapter(this) {
+        tabs.adapter = object : FragmentStateAdapter(this) {
             override fun createFragment(position: Int) = fragments[position]
             override fun getItemCount() = 3
         }
 
-        tabs.registerOnPageChangeCallback(object: ViewPager2.OnPageChangeCallback() {
+        tabs.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
             override fun onPageSelected(position: Int) {
                 menu.menu.getItem(position).setChecked(true)
             }

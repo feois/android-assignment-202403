@@ -11,6 +11,10 @@ import androidx.viewpager2.adapter.FragmentStateAdapter
 import androidx.viewpager2.widget.ViewPager2
 
 class QuizActivity : AppCompatActivity() {
+    companion object {
+        const val INTENT_QUIZ_ID = "quiz_id"
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -21,17 +25,22 @@ class QuizActivity : AppCompatActivity() {
             insets
         }
 
+        initQuizzes(resources)
+
+        val quizId = intent.getIntExtra(INTENT_QUIZ_ID, -1)
+        val quiz = Quizzes[quizId]
+
         val pager = findViewById<ViewPager2>(R.id.quizPager)
         val prevQuiz = findViewById<ImageButton>(R.id.prevQuiz)
         val nextQuiz = findViewById<ImageButton>(R.id.nextQuiz)
         val quizPages = arrayListOf<Fragment>()
 
-        for (i in 0..9) {
-            quizPages.add(QuizPage.newInstance(i))
+        for (i in 0..quiz.contents.size) {
+            quizPages.add(QuizPage.newInstance(quizId, i))
         }
 
         pager.adapter = object: FragmentStateAdapter(this) {
-            override fun getItemCount() = 10
+            override fun getItemCount() = quiz.contents.size
             override fun createFragment(position: Int) = quizPages[position]
         }
 

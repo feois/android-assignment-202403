@@ -2,7 +2,6 @@ package com.wilson.assignment
 
 import android.content.Context
 import android.content.Intent
-import android.content.res.Resources
 import android.os.Bundle
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
@@ -11,21 +10,30 @@ import android.view.ViewGroup
 import android.widget.TextView
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import org.json.JSONArray
-
-data class Quiz(val name: String)
 
 class QuizViewHolder(view: View): RecyclerView.ViewHolder(view) {
-    val root = view
-    val title: TextView
+    private val root = view
+    private val title: TextView
 
     init {
         title = view.findViewById(R.id.quizName)
     }
+
+    fun initView(context: Context, quizId: Int) {
+        val quiz = Quizzes[quizId]
+
+        title.text = quiz.name
+        root.setOnClickListener {
+            val intent = Intent(context, QuizActivity::class.java)
+
+            intent.putExtra(QuizActivity.INTENT_QUIZ_ID, quizId)
+            context.startActivity(intent)
+        }
+    }
 }
 
 class QuizListAdapter: RecyclerView.Adapter<QuizViewHolder>() {
-    lateinit var context: Context
+    private lateinit var context: Context
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): QuizViewHolder {
         context = parent.context
@@ -34,15 +42,10 @@ class QuizListAdapter: RecyclerView.Adapter<QuizViewHolder>() {
     }
 
     override fun onBindViewHolder(holder: QuizViewHolder, position: Int) {
-        holder.title.text = QuizzesFragment.quizzes[position].name
-        holder.root.setOnClickListener {
-            val intent = Intent(context, QuizActivity::class.java)
-
-            context.startActivity(intent)
-        }
+        holder.initView(context, position)
     }
 
-    override fun getItemCount() = QuizzesFragment.quizzes.size
+    override fun getItemCount() = Quizzes.size
 }
 
 /**
@@ -63,27 +66,11 @@ class QuizzesFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         val quizList = view.findViewById<RecyclerView>(R.id.quizList)
 
-        if (quizzes.isEmpty()) {
-            initQuizzes(resources)
-        }
-
         quizList.layoutManager = LinearLayoutManager(context)
         quizList.adapter = QuizListAdapter()
     }
 
     companion object {
-        var quizzes: List<Quiz> = arrayListOf()
-
-        fun initQuizzes(resources: Resources) {
-            val json = resources.openRawResource(R.raw.quizzes).bufferedReader().use { it.readText() }
-            val jsonArray = JSONArray(json)
-
-            quizzes = (0..<jsonArray.length()).map {
-                val quiz = jsonArray.getJSONObject(it)
-
-                Quiz(quiz.getString("name"))
-            }.toList()
-        }
 //        /**
 //         * Use this factory method to create a new instance of
 //         * this fragment using the provided parameters.

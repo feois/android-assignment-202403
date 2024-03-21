@@ -8,4 +8,5 @@
     <string name="empty" />
     <string name="prev_quiz">Previous question</string>
     <string name="next_quiz">Next question</string>
+    <string name="quiz_writing_hint">Enter your answer here</string>
 </resources>
