@@ -16,6 +16,7 @@ import android.widget.Toast
 // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
 private const val ARG_QUIZ_ID = "quiz_id"
 private const val ARG_CONTENT_ID = "content_id"
+private const val ARG_ANSWER = "answer"
 
 /**
  * A simple [Fragment] subclass.
@@ -27,8 +28,26 @@ class QuizPage : Fragment() {
     private var contentId: Int = 0
 
     private var count = 0
+    private var editText: EditText? = null
+    private var radioSelected = 0
+    private val checked = mutableSetOf<Int>()
 
     private val question: Quiz.Question get() = Quizzes[quizId].contents[contentId]
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        when (question.type) {
+            0 -> {
+                outState.putString(ARG_ANSWER, editText?.text.toString())
+                editText = null
+            }
+            1 -> {
+                outState.putInt(ARG_ANSWER, radioSelected)
+            }
+            else -> {
+                outState.putIntArray(ARG_ANSWER, checked.toIntArray())
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -44,16 +63,24 @@ class QuizPage : Fragment() {
     ): View? {
         val view = inflater.inflate(R.layout.fragment_quiz_page, container, false)
         val linearLayout = view.findViewById<LinearLayout>(R.id.quizFragmentLinearLayout)
+        val questionText = view.findViewById<TextView>(R.id.question)
 
-        view.findViewById<TextView>(R.id.question).text = question.question
+        questionText.text = question.question
 
         when (question.type) {
             0 -> {
                 inflater.inflate(R.layout.quiz_edit_text, linearLayout)
 
-                val editText = linearLayout.getChildAt(linearLayout.childCount - 1) as EditText
+                editText = linearLayout.getChildAt(linearLayout.childCount - 1) as EditText
 
-                editText.inputType = question.answer_type
+                editText?.inputType = question.answer_type
+
+                savedInstanceState?.getString(ARG_ANSWER)?.let { s ->
+                    editText?.text?.let {
+                        it.clear()
+                        it.append(s)
+                    }
+                }
             }
             1 -> {
                 inflater.inflate(R.layout.quiz_radio_group, linearLayout)
@@ -63,16 +90,27 @@ class QuizPage : Fragment() {
                 for (answer in question.answers) {
                     inflater.inflate(R.layout.quiz_radio_button, radioGroup)
 
-                    val radioButton = radioGroup.getChildAt(radioGroup.childCount - 1) as RadioButton
+                    val index = radioGroup.childCount - 1
+                    val radioButton = radioGroup.getChildAt(index) as RadioButton
 
                     radioButton.text = answer
+                    radioButton.setOnCheckedChangeListener { _, isChecked ->
+                        if (isChecked) {
+                            radioSelected = index
+                        }
+                    }
+                }
+
+                savedInstanceState?.let {
+                    (radioGroup.getChildAt(it.getInt(ARG_ANSWER)) as RadioButton).isChecked = true
                 }
             }
             else -> {
                 for (answer in question.answers) {
                     inflater.inflate(R.layout.quiz_check_box, linearLayout)
 
-                    val checkBox = linearLayout.getChildAt(linearLayout.childCount - 1) as CheckBox
+                    val index = linearLayout.childCount - 1
+                    val checkBox = linearLayout.getChildAt(index) as CheckBox
 
                     checkBox.text = answer
                     checkBox.setOnCheckedChangeListener { buttonView, isChecked ->
@@ -82,13 +120,21 @@ class QuizPage : Fragment() {
                                 Toast.makeText(context, "You cannot choose more than ${question.type}", Toast.LENGTH_SHORT).show()
                             }
                             else {
+                                checked.add(index)
                                 count++
                             }
                         }
                         else {
+                            checked.remove(index)
                             count--
                         }
                     }
+                }
+
+                count = 0
+
+                savedInstanceState?.getIntArray(ARG_ANSWER)?.forEach {
+                    (linearLayout.getChildAt(it) as CheckBox).isChecked = true
                 }
             }
         }
