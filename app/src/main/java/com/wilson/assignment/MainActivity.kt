@@ -5,14 +5,9 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import androidx.fragment.app.Fragment
-import androidx.fragment.app.FragmentActivity
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import androidx.viewpager2.widget.ViewPager2
-import com.google.android.material.bottomnavigation.BottomNavigationMenuView
 import com.google.android.material.bottomnavigation.BottomNavigationView
-import com.google.android.material.navigation.NavigationBarView
-import com.google.android.material.navigation.NavigationView
 
 class MainActivity : AppCompatActivity() {
     val fragments = arrayOf(QuizzesFragment(), NotificationsFragment(), UserProfileFragment())
@@ -42,15 +37,13 @@ class MainActivity : AppCompatActivity() {
         })
 
         menu.setOnItemSelectedListener {
-            tabs.setCurrentItem(when (it.itemId) {
+            tabs.currentItem = when (it.itemId) {
                 R.id.quizzes -> 0
                 R.id.notifications -> 1
                 R.id.user_profile -> 2
                 else -> 0
-            })
+            }
             true
         }
-
-        tabs.setCurrentItem(0)
     }
 }

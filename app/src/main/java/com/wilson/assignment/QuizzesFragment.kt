@@ -1,5 +1,7 @@
 package com.wilson.assignment
 
+import android.content.Context
+import android.content.Intent
 import android.content.res.Resources
 import android.os.Bundle
 import androidx.fragment.app.Fragment
@@ -9,9 +11,7 @@ import android.view.ViewGroup
 import android.widget.TextView
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import androidx.versionedparcelable.VersionedParcelize
 import org.json.JSONArray
-import org.json.JSONObject
 
 data class Quiz(val name: String)
 
@@ -25,13 +25,20 @@ class QuizViewHolder(view: View): RecyclerView.ViewHolder(view) {
 }
 
 class QuizListAdapter: RecyclerView.Adapter<QuizViewHolder>() {
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int)
-            = QuizViewHolder(LayoutInflater.from(parent.context).inflate(R.layout.quiz_item, parent, false))
+    lateinit var context: Context
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): QuizViewHolder {
+        context = parent.context
+
+        return QuizViewHolder(LayoutInflater.from(context).inflate(R.layout.quiz_item, parent, false))
+    }
 
     override fun onBindViewHolder(holder: QuizViewHolder, position: Int) {
         holder.title.text = QuizzesFragment.quizzes[position].name
         holder.root.setOnClickListener {
+            val intent = Intent(context, QuizActivity::class.java)
 
+            context.startActivity(intent)
         }
     }
 
@@ -40,8 +47,6 @@ class QuizListAdapter: RecyclerView.Adapter<QuizViewHolder>() {
 
 /**
  * A simple [Fragment] subclass.
- * Use the [QuizzesFragment.newInstance] factory method to
- * create an instance of this fragment.
  */
 class QuizzesFragment : Fragment() {
 //    override fun onCreate(savedInstanceState: Bundle?) {
@@ -58,14 +63,16 @@ class QuizzesFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         val quizList = view.findViewById<RecyclerView>(R.id.quizList)
 
-        initQuizzes(resources)
+        if (quizzes.isEmpty()) {
+            initQuizzes(resources)
+        }
 
         quizList.layoutManager = LinearLayoutManager(context)
         quizList.adapter = QuizListAdapter()
     }
 
     companion object {
-        lateinit var quizzes: List<Quiz>
+        var quizzes: List<Quiz> = arrayListOf()
 
         fun initQuizzes(resources: Resources) {
             val json = resources.openRawResource(R.raw.quizzes).bufferedReader().use { it.readText() }
