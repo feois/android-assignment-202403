@@ -87,13 +87,13 @@ class QuizPage : Fragment() {
 
                 val radioGroup = linearLayout.getChildAt(linearLayout.childCount - 1) as RadioGroup
 
-                for (answer in question.answers) {
+                for (options in question.options) {
                     inflater.inflate(R.layout.quiz_radio_button, radioGroup)
 
                     val index = radioGroup.childCount - 1
                     val radioButton = radioGroup.getChildAt(index) as RadioButton
 
-                    radioButton.text = answer
+                    radioButton.text = options
                     radioButton.setOnCheckedChangeListener { _, isChecked ->
                         if (isChecked) {
                             radioSelected = index
@@ -106,13 +106,13 @@ class QuizPage : Fragment() {
                 }
             }
             else -> {
-                for (answer in question.answers) {
+                for (option in question.options) {
                     inflater.inflate(R.layout.quiz_check_box, linearLayout)
 
                     val index = linearLayout.childCount - 1
                     val checkBox = linearLayout.getChildAt(index) as CheckBox
 
-                    checkBox.text = answer
+                    checkBox.text = option
                     checkBox.setOnCheckedChangeListener { buttonView, isChecked ->
                         if (isChecked) {
                             if (question.type > 0 && count == question.type) {

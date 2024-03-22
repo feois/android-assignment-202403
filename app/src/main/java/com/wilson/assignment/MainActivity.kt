@@ -1,6 +1,7 @@
 package com.wilson.assignment
 
 import android.os.Bundle
+import android.widget.SearchView
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
@@ -10,7 +11,8 @@ import androidx.viewpager2.widget.ViewPager2
 import com.google.android.material.bottomnavigation.BottomNavigationView
 
 class MainActivity : AppCompatActivity() {
-    val fragments = arrayOf(QuizzesFragment(), NotificationsFragment(), UserProfileFragment())
+    private val quizzesFragment: QuizzesFragment = QuizzesFragment()
+    val fragments = arrayOf(quizzesFragment, NotificationsFragment(), UserProfileFragment())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -26,6 +28,7 @@ class MainActivity : AppCompatActivity() {
 
         val tabs = findViewById<ViewPager2>(R.id.tabs)
         val menu = findViewById<BottomNavigationView>(R.id.menu)
+        val search = findViewById<SearchView>(R.id.search)
 
         tabs.adapter = object : FragmentStateAdapter(this) {
             override fun createFragment(position: Int) = fragments[position]
@@ -47,5 +50,18 @@ class MainActivity : AppCompatActivity() {
             }
             true
         }
+
+        search.setOnQueryTextListener(object: SearchView.OnQueryTextListener {
+            override fun onQueryTextChange(newText: String?): Boolean {
+                val keywords = (newText ?: "").split(" ").map { it.lowercase() }.toList()
+                val query = Quizzes.filter { quiz -> keywords.all { quiz.name.lowercase().contains(it) } }
+
+                quizzesFragment.setQuizzes(query)
+
+                return false
+            }
+
+            override fun onQueryTextSubmit(query: String?) = false
+        })
     }
 }

@@ -7,11 +7,18 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
+    <SearchView
+        android:id="@+id/search"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:iconifiedByDefault="false" />
+
     <androidx.viewpager2.widget.ViewPager2
         android:id="@+id/tabs"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_above="@id/menu"
+        android:layout_below="@id/search"
         android:orientation="horizontal" />
 
     <com.google.android.material.bottomnavigation.BottomNavigationView

@@ -1,11 +1,11 @@
 [
   {
-    "name": "Quiz 1",
+    "name": "Quiz Main",
     "contents": [
       {
         "question": "1 + 1 = ?",
         "type": 1,
-        "answers": [
+        "options": [
           "1",
           "2",
           "3",
@@ -15,7 +15,7 @@
       {
         "question": "Choose all numbers",
         "type": 3,
-        "answers": [
+        "options": [
           "1",
           "abc",
           "+-*/",
@@ -45,47 +45,17 @@
         "question": "write your name",
         "type": 0,
         "hint": "text"
-      },
-      {
-        "question": "write your name",
-        "type": 0,
-        "hint": "text"
-      },
-      {
-        "question": "write your name",
-        "type": 0,
-        "hint": "text"
-      },
-      {
-        "question": "write your name",
-        "type": 0,
-        "hint": "text"
-      },
-      {
-        "question": "write your name",
-        "type": 0,
-        "hint": "text"
-      },
-      {
-        "question": "write your name",
-        "type": 0,
-        "hint": "text"
-      },
-      {
-        "question": "write your name",
-        "type": 0,
-        "hint": "text"
       }
     ]
   },
   {
-    "name": "Quiz 2",
+    "name": "Quiz Test",
     "contents": [
 
     ]
   },
   {
-    "name": "Quiz 3",
+    "name": "Test Foo",
     "contents": [
 
     ]

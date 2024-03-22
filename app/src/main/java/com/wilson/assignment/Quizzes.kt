@@ -5,7 +5,7 @@ import android.text.InputType
 import org.json.JSONArray
 
 data class Quiz(val id: Int, val name: String, val contents: List<Question>) {
-    data class Question(val id: Int, val question: String, val type: Int, val answers: List<String>, val answer_type: Int)
+    data class Question(val id: Int, val question: String, val type: Int, val options: List<String>, val answer_type: Int)
 }
 
 lateinit var Quizzes: List<Quiz> private set
@@ -25,7 +25,7 @@ fun initQuizzes(resources: Resources) {
             val content = contentArray.getJSONObject(j)
             val question = content.getString("question")
             val type = content.getInt("type")
-            val answers = arrayListOf<String>()
+            val options = arrayListOf<String>()
             var answer_type = 0
 
             if (type == 0) {
@@ -38,14 +38,14 @@ fun initQuizzes(resources: Resources) {
                 }
             }
             else {
-                val answerArray = content.getJSONArray("answers")
+                val optionArray = content.getJSONArray("options")
 
-                for (k in 0..<answerArray.length()) {
-                    answers.add(answerArray.getString(k))
+                for (k in 0..<optionArray.length()) {
+                    options.add(optionArray.getString(k))
                 }
             }
 
-            contents.add(Quiz.Question(j, question, type, answers, answer_type))
+            contents.add(Quiz.Question(j, question, type, options, answer_type))
         }
 
         list.add(Quiz(i, name, contents))

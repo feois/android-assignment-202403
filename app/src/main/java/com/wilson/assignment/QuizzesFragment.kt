@@ -19,33 +19,27 @@ class QuizViewHolder(view: View): RecyclerView.ViewHolder(view) {
         title = view.findViewById(R.id.quizName)
     }
 
-    fun initView(context: Context, quizId: Int) {
-        val quiz = Quizzes[quizId]
-
+    fun initView(context: Context, quiz: Quiz) {
         title.text = quiz.name
         root.setOnClickListener {
             val intent = Intent(context, QuizActivity::class.java)
 
-            intent.putExtra(QuizActivity.INTENT_QUIZ_ID, quizId)
+            intent.putExtra(QuizActivity.INTENT_QUIZ_ID, quiz.id)
             context.startActivity(intent)
         }
     }
 }
 
-class QuizListAdapter: RecyclerView.Adapter<QuizViewHolder>() {
-    private lateinit var context: Context
-
+class QuizListAdapter(private val context: Context, private val quizList: List<Quiz>): RecyclerView.Adapter<QuizViewHolder>() {
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): QuizViewHolder {
-        context = parent.context
-
         return QuizViewHolder(LayoutInflater.from(context).inflate(R.layout.quiz_item, parent, false))
     }
 
     override fun onBindViewHolder(holder: QuizViewHolder, position: Int) {
-        holder.initView(context, position)
+        holder.initView(context, quizList[position])
     }
 
-    override fun getItemCount() = Quizzes.size
+    override fun getItemCount() = quizList.size
 }
 
 /**
@@ -60,14 +54,19 @@ class QuizzesFragment : Fragment() {
 //        }
 //    }
 
+    private lateinit var quizList: RecyclerView
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?)
         = inflater.inflate(R.layout.fragment_quizzes, container, false)
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        val quizList = view.findViewById<RecyclerView>(R.id.quizList)
-
+        quizList = view.findViewById(R.id.quizList)
         quizList.layoutManager = LinearLayoutManager(context)
-        quizList.adapter = QuizListAdapter()
+        quizList.adapter = QuizListAdapter(requireContext(), Quizzes)
+    }
+
+    fun setQuizzes(quizzes: List<Quiz>) {
+        quizList.swapAdapter(QuizListAdapter(requireContext(), quizzes), true)
     }
 
     companion object {
