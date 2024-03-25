@@ -7,7 +7,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
-import android.widget.Toast
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 
@@ -23,7 +22,7 @@ class LogInFragment : Fragment() {
     private var signUpLinkButton: Button? = null
 
     interface EventListener {
-        fun onLogIn(username: String, password: String, newAccount: Boolean)
+        fun onLogIn(username: String, password: String)
         fun onGoToSignUp()
     }
 
@@ -51,7 +50,7 @@ class LogInFragment : Fragment() {
             password?.error = ""
 
             if (validation.isEmpty()) {
-                eventListener?.onLogIn(usernameText?.text.toString(), passwordText?.text.toString(), false)
+                eventListener?.onLogIn(usernameText?.text.toString(), passwordText?.text.toString())
             }
             else {
                 for (message in validation.mapNotNull { it.message }) {
@@ -63,7 +62,7 @@ class LogInFragment : Fragment() {
                     }
                 }
 
-                Toast.makeText(context, "Invalid input", Toast.LENGTH_SHORT).show()
+                context?.shortToast("Invalid input")
             }
         }
 

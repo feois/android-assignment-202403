@@ -11,7 +11,6 @@ import android.widget.LinearLayout
 import android.widget.RadioButton
 import android.widget.RadioGroup
 import android.widget.TextView
-import android.widget.Toast
 
 // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
 private const val ARG_QUIZ_ID = "quiz_id"
@@ -73,7 +72,7 @@ class QuizPageFragment : Fragment() {
 
                 editText = linearLayout.getChildAt(linearLayout.childCount - 1) as EditText
 
-                editText?.inputType = question.answer_type
+                editText?.inputType = question.answerType
 
                 savedInstanceState?.getString(ARG_ANSWER)?.let { s ->
                     editText?.text?.let {
@@ -117,7 +116,7 @@ class QuizPageFragment : Fragment() {
                         if (isChecked) {
                             if (question.type > 0 && count == question.type) {
                                 buttonView.isChecked = false
-                                Toast.makeText(context, "You cannot choose more than ${question.type}", Toast.LENGTH_SHORT).show()
+                                context?.shortToast("You cannot choose more than ${question.type}")
                             }
                             else {
                                 checked.add(index)

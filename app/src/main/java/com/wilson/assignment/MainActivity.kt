@@ -18,6 +18,10 @@ import com.google.android.material.bottomnavigation.BottomNavigationView
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
+fun Context.shortToast(s: String) = Toast.makeText(this, s, Toast.LENGTH_SHORT).show()
+fun Context.longToast(s: String) = Toast.makeText(this, s, Toast.LENGTH_LONG).show()
+fun Context.unknownError(e: Throwable? = null) = longToast("Unknown error encountered" + e?.javaClass?.name?.let { ": $it" })
+
 class TabsAdapter(fragmentActivity: FragmentActivity, private val tabs: Array<Fragment>): FragmentStateAdapter(fragmentActivity) {
     override fun getItemCount() = tabs.size
     override fun createFragment(position: Int) = tabs[position]
@@ -71,22 +75,22 @@ class MainActivity : AppCompatActivity(), UserProfileFragment.EventListener, Log
         }
     }
 
-    override fun onSignUp(user: User) {
-        User.addUser(user).addOnSuccessListener {
-            if (it == null) {
-                Toast.makeText(this, "Unknown error", Toast.LENGTH_SHORT).show()
-            }
-            else if (it) {
-                logInFragment.clearInput()
-                signUpFragment.clearInput()
-                accountFragment = userProfileFragment
-                refreshTabs()
-                Toast.makeText(this, "Successfully created account!", Toast.LENGTH_SHORT).show()
-            }
-            else {
-                Toast.makeText(this, "Username ${user.username} has already been taken", Toast.LENGTH_SHORT).show()
-            }
-        }
+    override fun onSignUp(user: User, password: String) {
+        User.addUser(user, password)
+                .addOnSuccessListener {
+                    when (it) {
+                        true -> {
+                            logInFragment.clearInput()
+                            signUpFragment.clearInput()
+                            accountFragment = userProfileFragment
+                            refreshTabs()
+                            shortToast("Successfully created account!")
+                        }
+                        false -> shortToast("Username ${user.username} has already been taken")
+                        else -> unknownError()
+                    }
+                }
+                .addOnFailureListener { unknownError(it) }
     }
 
     override fun onGoToSignUp() {
@@ -94,23 +98,31 @@ class MainActivity : AppCompatActivity(), UserProfileFragment.EventListener, Log
         refreshTabs()
     }
 
-    override fun onLogIn(username: String, password: String, newAccount: Boolean) {
+    override fun onLogIn(username: String, password: String) {
         User.getUser(username)
-                .addOnSuccessListener {
-                    if (it == null) {
-                        Toast.makeText(this, "User $username not found", Toast.LENGTH_LONG).show()
-                    }
-                    else if (it.password != password) {
-                        Toast.makeText(this, "Password incorrect", Toast.LENGTH_LONG).show()
+                .addOnSuccessListener { user ->
+                    if (user == null) {
+                        shortToast("User $username not found")
                     }
                     else {
-                        logInFragment.clearInput()
-                        signUpFragment.clearInput()
-                        accountFragment = userProfileFragment
-                        refreshTabs()
-                        Toast.makeText(this, "Successfully logged in!", Toast.LENGTH_LONG).show()
+                        user.verify(password)
+                                .addOnSuccessListener {
+                                    when (it) {
+                                        true -> {
+                                            logInFragment.clearInput()
+                                            signUpFragment.clearInput()
+                                            accountFragment = userProfileFragment
+                                            refreshTabs()
+                                            shortToast("Successfully logged in!")
+                                        }
+                                        false -> shortToast("Password incorrect")
+                                        else -> unknownError()
+                                    }
+                                }
+                                .addOnFailureListener { unknownError(it) }
                     }
                 }
+                .addOnFailureListener { unknownError(it) }
     }
 
     override fun onGoToLogIn() {

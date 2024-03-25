@@ -12,4 +12,8 @@
     <string name="search_hint">Search quizzes</string>
     <string name="sign_up_link"><u>Don\'t have an account? Create one here</u></string>
     <string name="log_in_link"><u>Already have an account? Log in here</u></string>
+    <string name="username">Username</string>
+    <string name="password">Password</string>
+    <string name="first_name">First Name</string>
+    <string name="last_name">Last Name</string>
 </resources>

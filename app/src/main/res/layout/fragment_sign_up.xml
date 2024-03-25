@@ -24,7 +24,7 @@
         <ScrollView
             android:id="@+id/scrollView2"
             android:layout_width="wrap_content"
-            android:layout_height="300dp"
+            android:layout_height="200dp"
             android:layout_marginTop="32dp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
@@ -40,7 +40,7 @@
                     android:layout_width="200dp"
                     android:layout_height="wrap_content"
                     android:autofillHints="newUsername"
-                    android:hint="Username"
+                    android:hint="@string/username"
                     android:importantForAutofill="yes"
                     app:endIconMode="clear_text"
                     app:errorEnabled="true">
@@ -57,7 +57,7 @@
                     android:id="@+id/newPassword"
                     android:layout_width="200dp"
                     android:layout_height="wrap_content"
-                    android:hint="Password"
+                    android:hint="@string/password"
                     android:importantForAutofill="yes"
                     app:errorEnabled="true"
                     app:passwordToggleEnabled="true">
@@ -74,7 +74,8 @@
                     android:id="@+id/firstName"
                     android:layout_width="200dp"
                     android:layout_height="wrap_content"
-                    android:hint="First Name"
+                    android:autofillHints="personGivenName"
+                    android:hint="@string/first_name"
                     android:importantForAutofill="yes"
                     app:endIconMode="clear_text"
                     app:errorEnabled="true">
@@ -91,7 +92,8 @@
                     android:id="@+id/lastName"
                     android:layout_width="200dp"
                     android:layout_height="wrap_content"
-                    android:hint="Last Name"
+                    android:autofillHints="personFamilyName"
+                    android:hint="@string/last_name"
                     android:importantForAutofill="yes"
                     app:endIconMode="clear_text"
                     app:errorEnabled="true">

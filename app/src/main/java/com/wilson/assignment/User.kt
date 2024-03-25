@@ -1,21 +1,68 @@
 package com.wilson.assignment
 
-import com.google.android.gms.tasks.Task
 import com.google.firebase.Firebase
 import com.google.firebase.firestore.firestore
+import java.security.MessageDigest
 
+/**
+ * Hashing Utils
+ * @author Sam Clarke <www.samclarke.com>
+ * @license MIT
+ */
+object HashUtils {
+    fun sha512(input: String) = hashString("SHA-512", input)
 
-data class User(val username: String, val password: String, val firstName: String, val lastName: String) {
+    fun sha256(input: String) = hashString("SHA-256", input)
+
+    fun sha1(input: String) = hashString("SHA-1", input)
+
+    /**
+     * Supported algorithms on Android:
+     *
+     * Algorithm	Supported API Levels
+     * MD5          1+
+     * SHA-1	    1+
+     * SHA-224	    1-8,22+
+     * SHA-256	    1+
+     * SHA-384	    1+
+     * SHA-512	    1+
+     */
+    private fun hashString(type: String, input: String): String {
+        val HEX_CHARS = "0123456789ABCDEF"
+        val bytes = MessageDigest
+                .getInstance(type)
+                .digest(input.toByteArray())
+        val result = StringBuilder(bytes.size * 2)
+
+        bytes.forEach {
+            val i = it.toInt()
+            result.append(HEX_CHARS[i shr 4 and 0x0f])
+            result.append(HEX_CHARS[i and 0x0f])
+        }
+
+        return result.toString()
+    }
+}
+
+data class User(val username: String, val firstName: String, val lastName: String) {
     val fullName get() = "$firstName $lastName"
+    var verified = false; private set
 
-    fun validate(): List<Throwable> {
-        val list = arrayListOf<Throwable>()
+    fun validate() = listOf(
+        validateUsername(username),
+        validateFirstName(firstName),
+        validateLastName(lastName),
+    ).mapNotNull { it.exceptionOrNull() }
 
-        list.addAll(validateUsernameAndPassword(username, password))
-        validateFirstName(firstName).exceptionOrNull()?.let { list.add(it) }
-        validateLastName(lastName).exceptionOrNull()?.let { list.add(it) }
-
-        return list
+    fun verify(password: String) = collection.document(username).get().continueWith {
+        it.result?.let { doc ->
+            if (doc.exists()) {
+                doc.getString(PASSWORD_FIELD) == HashUtils.sha256(password)
+            }
+            else {
+                null
+            }
+        }
     }
 
     @Suppress("MemberVisibilityCanBePrivate")
@@ -43,50 +90,45 @@ data class User(val username: String, val password: String, val firstName: Strin
         val db get() = Firebase.firestore
         val collection get() = db.collection(USER_COLLECTION)
 
-        fun hasUser(username: String): Task<Boolean?> {
-            return collection.document(username)
+        fun hasUser(username: String) = collection.document(username)
                     .get()
                     .continueWith {
                         it.result?.exists()
                     }
-        }
 
-        fun addUser(user: User): Task<Boolean?> {
-            return hasUser(user.username).continueWithTask {
-                        it.result?.let { userExist ->
-                            if (userExist) {
-                                it.continueWith {
-                                    false
-                                }
-                            }
-                            else {
-                                collection.document(user.username)
-                                        .set(hashMapOf(
-                                            PASSWORD_FIELD to user.password,
-                                            FIRST_NAME_FIELD to user.firstName,
-                                            LAST_NAME_FIELD to user.lastName,
-                                        ))
-                                        .continueWith {
-                                            true
-                                        }
-                            }
-                        }
+        fun addUser(user: User, password: String) = hasUser(user.username).continueWithTask {
+            it.result?.let { userExist ->
+                if (userExist) {
+                    it.continueWith {
+                        false
                     }
+                }
+                else {
+                    collection.document(user.username)
+                            .set(hashMapOf(
+                                PASSWORD_FIELD to HashUtils.sha256(password),
+                                FIRST_NAME_FIELD to user.firstName,
+                                LAST_NAME_FIELD to user.lastName,
+                            ))
+                            .continueWith {
+                                true
+                            }
+                }
+            } ?: it
         }
 
-        fun getUser(username: String): Task<User?> {
-            return collection.document(username)
+        fun getUser(username: String) = collection.document(username)
                     .get()
                     .continueWith {
                         if (it.result?.exists() == true) {
                             val doc = it.result!!
-                            val password = doc.getString(PASSWORD_FIELD) ?: return@continueWith null
-                            val firstName = doc.getString(FIRST_NAME_FIELD) ?: return@continueWith null
-                            val lastName = doc.getString(LAST_NAME_FIELD) ?: return@continueWith null
+                            val firstName =
+                                doc.getString(FIRST_NAME_FIELD) ?: return@continueWith null
+                            val lastName =
+                                doc.getString(LAST_NAME_FIELD) ?: return@continueWith null
 
                             User(
                                 username,
-                                password,
                                 firstName,
                                 lastName,
                             )
@@ -95,7 +137,6 @@ data class User(val username: String, val password: String, val firstName: Strin
                             null
                         }
                     }
-        }
 
         fun errorType(error: String) = when (error) {
             ERR_USERNAME_INVALID_CHARACTER, ERR_EMPTY_USERNAME -> ERR_USERNAME
@@ -115,14 +156,8 @@ data class User(val username: String, val password: String, val firstName: Strin
             require(password.none { it.isWhitespace() }) { ERR_PASSWORD_WHITESPACE }
         }
 
-        fun validateUsernameAndPassword(username: String, password: String): List<Throwable> {
-            val list = arrayListOf<Throwable>()
-
-            validateUsername(username).exceptionOrNull()?.let { list.add(it) }
-            validatePassword(password).exceptionOrNull()?.let { list.add(it) }
-
-            return list
-        }
+        fun validateUsernameAndPassword(username: String, password: String)
+            = listOf(validateUsername(username), validatePassword(password)).mapNotNull { it.exceptionOrNull() }
 
         fun validateFirstName(firstName: String) = runCatching {
             require(firstName.isNotEmpty()) { ERR_EMPTY_FIRST_NAME }

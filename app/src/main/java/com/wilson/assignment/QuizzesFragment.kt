@@ -57,7 +57,7 @@ class QuizzesFragment : Fragment() {
 
     private lateinit var quizList: RecyclerView
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?)
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View?
         = inflater.inflate(R.layout.fragment_quizzes, container, false)
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
