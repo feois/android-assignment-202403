@@ -20,10 +20,10 @@ private const val ARG_ANSWER = "answer"
 
 /**
  * A simple [Fragment] subclass.
- * Use the [QuizPage.newInstance] factory method to
+ * Use the [QuizPageFragment.newInstance] factory method to
  * create an instance of this fragment.
  */
-class QuizPage : Fragment() {
+class QuizPageFragment : Fragment() {
     private var quizId: Int = 0
     private var contentId: Int = 0
 
@@ -152,7 +152,7 @@ class QuizPage : Fragment() {
          */
         @JvmStatic
         fun newInstance(quizId: Int, contentId: Int) =
-            QuizPage().apply {
+            QuizPageFragment().apply {
                 arguments = Bundle().apply {
                     putInt(ARG_QUIZ_ID, quizId)
                     putInt(ARG_CONTENT_ID, contentId)

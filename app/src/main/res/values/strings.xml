@@ -10,4 +10,6 @@
     <string name="next_quiz">Next question</string>
     <string name="quiz_writing_hint">Enter your answer here</string>
     <string name="search_hint">Search quizzes</string>
+    <string name="sign_up_link"><u>Don\'t have an account? Create one here</u></string>
+    <string name="log_in_link"><u>Already have an account? Log in here</u></string>
 </resources>

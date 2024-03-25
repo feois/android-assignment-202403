@@ -1,18 +1,40 @@
 package com.wilson.assignment
 
+import android.content.Context
 import android.os.Bundle
-import android.widget.SearchView
+import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.preferencesDataStore
+import androidx.fragment.app.Fragment
+import androidx.fragment.app.FragmentActivity
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import androidx.viewpager2.widget.ViewPager2
 import com.google.android.material.bottomnavigation.BottomNavigationView
 
-class MainActivity : AppCompatActivity() {
-    private val quizzesFragment: QuizzesFragment = QuizzesFragment()
-    val fragments = arrayOf(quizzesFragment, NotificationsFragment(), UserProfileFragment())
+val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
+
+class TabsAdapter(fragmentActivity: FragmentActivity, private val tabs: Array<Fragment>): FragmentStateAdapter(fragmentActivity) {
+    override fun getItemCount() = tabs.size
+    override fun createFragment(position: Int) = tabs[position]
+}
+
+class MainActivity : AppCompatActivity(), UserProfileFragment.EventListener, LogInFragment.EventListener, SignUpFragment.EventListener {
+    private val quizzesFragment = QuizzesFragment()
+    private val notificationsFragment = NotificationsFragment()
+    private val userProfileFragment = UserProfileFragment()
+    private val logInFragment = LogInFragment()
+    private val signUpFragment = SignUpFragment()
+
+    private lateinit var accountFragment: Fragment
+
+    private val fragments get() = arrayOf(quizzesFragment, notificationsFragment, accountFragment)
+
+    private lateinit var tabs: ViewPager2
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -26,15 +48,12 @@ class MainActivity : AppCompatActivity() {
 
         initQuizzes(resources)
 
-        val tabs = findViewById<ViewPager2>(R.id.tabs)
         val menu = findViewById<BottomNavigationView>(R.id.menu)
-        val search = findViewById<SearchView>(R.id.search)
 
-        tabs.adapter = object : FragmentStateAdapter(this) {
-            override fun createFragment(position: Int) = fragments[position]
-            override fun getItemCount() = 3
-        }
+        accountFragment = logInFragment
 
+        tabs = findViewById(R.id.tabs)
+        tabs.adapter = TabsAdapter(this, fragments)
         tabs.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
             override fun onPageSelected(position: Int) {
                 menu.menu.getItem(position).setChecked(true)
@@ -50,18 +69,64 @@ class MainActivity : AppCompatActivity() {
             }
             true
         }
+    }
 
-        search.setOnQueryTextListener(object: SearchView.OnQueryTextListener {
-            override fun onQueryTextChange(newText: String?): Boolean {
-                val keywords = (newText ?: "").split(" ").map { it.lowercase() }.toList()
-                val query = Quizzes.filter { quiz -> keywords.all { quiz.name.lowercase().contains(it) } }
-
-                quizzesFragment.setQuizzes(query)
-
-                return false
+    override fun onSignUp(user: User) {
+        User.addUser(user).addOnSuccessListener {
+            if (it == null) {
+                Toast.makeText(this, "Unknown error", Toast.LENGTH_SHORT).show()
             }
+            else if (it) {
+                logInFragment.clearInput()
+                signUpFragment.clearInput()
+                accountFragment = userProfileFragment
+                refreshTabs()
+                Toast.makeText(this, "Successfully created account!", Toast.LENGTH_SHORT).show()
+            }
+            else {
+                Toast.makeText(this, "Username ${user.username} has already been taken", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 
-            override fun onQueryTextSubmit(query: String?) = false
-        })
+    override fun onGoToSignUp() {
+        accountFragment = signUpFragment
+        refreshTabs()
+    }
+
+    override fun onLogIn(username: String, password: String, newAccount: Boolean) {
+        User.getUser(username)
+                .addOnSuccessListener {
+                    if (it == null) {
+                        Toast.makeText(this, "User $username not found", Toast.LENGTH_LONG).show()
+                    }
+                    else if (it.password != password) {
+                        Toast.makeText(this, "Password incorrect", Toast.LENGTH_LONG).show()
+                    }
+                    else {
+                        logInFragment.clearInput()
+                        signUpFragment.clearInput()
+                        accountFragment = userProfileFragment
+                        refreshTabs()
+                        Toast.makeText(this, "Successfully logged in!", Toast.LENGTH_LONG).show()
+                    }
+                }
+    }
+
+    override fun onGoToLogIn() {
+        accountFragment = logInFragment
+        refreshTabs()
+    }
+
+    override fun onLogOut() {
+        accountFragment = logInFragment
+        refreshTabs()
+    }
+
+    private fun refreshTabs() {
+        val item = tabs.currentItem
+
+        tabs.adapter = TabsAdapter(this, fragments)
+        tabs.setCurrentItem(item, false)
     }
 }

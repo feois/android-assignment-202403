@@ -7,6 +7,7 @@ import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.SearchView
 import android.widget.TextView
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -60,13 +61,24 @@ class QuizzesFragment : Fragment() {
         = inflater.inflate(R.layout.fragment_quizzes, container, false)
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        val search = view.findViewById<SearchView>(R.id.search)
+
         quizList = view.findViewById(R.id.quizList)
         quizList.layoutManager = LinearLayoutManager(context)
         quizList.adapter = QuizListAdapter(requireContext(), Quizzes)
-    }
 
-    fun setQuizzes(quizzes: List<Quiz>) {
-        quizList.swapAdapter(QuizListAdapter(requireContext(), quizzes), true)
+        search.setOnQueryTextListener(object: SearchView.OnQueryTextListener {
+            override fun onQueryTextChange(newText: String?): Boolean {
+                val keywords = (newText ?: "").split(" ").map { it.lowercase() }.toList()
+                val query = Quizzes.filter { quiz -> keywords.all { quiz.name.lowercase().contains(it) } }
+
+                quizList.swapAdapter(QuizListAdapter(requireContext(), query), true)
+
+                return false
+            }
+
+            override fun onQueryTextSubmit(query: String?) = false
+        })
     }
 
     companion object {

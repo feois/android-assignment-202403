@@ -36,7 +36,7 @@ class QuizActivity : AppCompatActivity() {
         val quizPages = arrayListOf<Fragment>()
 
         for (i in 0..quiz.contents.size) {
-            quizPages.add(QuizPage.newInstance(quizId, i))
+            quizPages.add(QuizPageFragment.newInstance(quizId, i))
         }
 
         pager.adapter = object: FragmentStateAdapter(this) {
