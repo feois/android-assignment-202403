@@ -9,6 +9,7 @@ import android.view.ViewGroup
 import android.widget.Button
 
 class UserProfileFragment : Fragment() {
+    @Suppress("MemberVisibilityCanBePrivate")
     var eventListener: EventListener? = null
 
     fun interface EventListener {
