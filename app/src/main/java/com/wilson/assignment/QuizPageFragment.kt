@@ -14,7 +14,8 @@ import android.widget.TextView
 
 // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
 private const val ARG_QUIZ_ID = "quiz_id"
-private const val ARG_CONTENT_ID = "content_id"
+private const val ARG_INDEXES = "shuffled_indexes"
+private const val ARG_QUESTION_INDEX = "question_index"
 private const val ARG_ANSWER = "answer"
 
 /**
@@ -23,26 +24,27 @@ private const val ARG_ANSWER = "answer"
  * create an instance of this fragment.
  */
 class QuizPageFragment : Fragment() {
-    private var quizId: Int = 0
-    private var contentId: Int = 0
+    private var quizId = ""
+    private var indexes = intArrayOf()
+    private var questionIndex = 0
 
-    private var count = 0
+    private var checkedCount = 0
     private var editText: EditText? = null
     private var radioSelected = 0
     private val checked = mutableSetOf<Int>()
 
-    private val question: Quiz.Question get() = Quizzes[quizId].contents[contentId]
+    private val question by lazy { quizzesMap[quizId]?.run { questions[indexes[questionIndex]] } }
 
     override fun onSaveInstanceState(outState: Bundle) {
-        when (question.type) {
-            0 -> {
+        when (question) {
+            is Quiz.SubjectiveQuestion -> {
                 outState.putString(ARG_ANSWER, editText?.text.toString())
                 editText = null
             }
-            1 -> {
+            is Quiz.UniselectionalObjectiveQuestion -> {
                 outState.putInt(ARG_ANSWER, radioSelected)
             }
-            else -> {
+            is Quiz.MultiselectionalObjectiveQuestion -> {
                 outState.putIntArray(ARG_ANSWER, checked.toIntArray())
             }
         }
@@ -51,8 +53,9 @@ class QuizPageFragment : Fragment() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         arguments?.let {
-            quizId = it.getInt(ARG_QUIZ_ID)
-            contentId = it.getInt(ARG_CONTENT_ID)
+            quizId = it.getString(ARG_QUIZ_ID)!!
+            indexes = it.getIntArray(ARG_INDEXES)!!
+            questionIndex = it.getInt(ARG_QUESTION_INDEX)
         }
     }
 
@@ -61,80 +64,89 @@ class QuizPageFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View? {
         val view = inflater.inflate(R.layout.fragment_quiz_page, container, false)
-        val linearLayout = view.findViewById<LinearLayout>(R.id.quizFragmentLinearLayout)
-        val questionText = view.findViewById<TextView>(R.id.question)
 
-        questionText.text = question.question
+        question?.run {
+            val linearLayout = view.findViewById<LinearLayout>(R.id.quizFragmentLinearLayout)
+            val questionText = view.findViewById<TextView>(R.id.question)
 
-        when (question.type) {
-            0 -> {
-                inflater.inflate(R.layout.quiz_edit_text, linearLayout)
+            questionText.text = question
 
-                editText = linearLayout.getChildAt(linearLayout.childCount - 1) as EditText
+            when (this) {
+                is Quiz.SubjectiveQuestion -> {
+                    inflater.inflate(R.layout.quiz_edit_text, linearLayout)
 
-                editText?.inputType = question.answerType
+                    editText = linearLayout.getChildAt(linearLayout.childCount - 1) as EditText
 
-                savedInstanceState?.getString(ARG_ANSWER)?.let { s ->
-                    editText?.text?.let {
-                        it.clear()
-                        it.append(s)
-                    }
-                }
-            }
-            1 -> {
-                inflater.inflate(R.layout.quiz_radio_group, linearLayout)
+                    editText?.inputType = inputType
 
-                val radioGroup = linearLayout.getChildAt(linearLayout.childCount - 1) as RadioGroup
-
-                for (options in question.options) {
-                    inflater.inflate(R.layout.quiz_radio_button, radioGroup)
-
-                    val index = radioGroup.childCount - 1
-                    val radioButton = radioGroup.getChildAt(index) as RadioButton
-
-                    radioButton.text = options
-                    radioButton.setOnCheckedChangeListener { _, isChecked ->
-                        if (isChecked) {
-                            radioSelected = index
+                    savedInstanceState?.getString(ARG_ANSWER)?.let { s ->
+                        editText?.text?.let {
+                            it.clear()
+                            it.append(s)
                         }
                     }
                 }
 
-                savedInstanceState?.let {
-                    (radioGroup.getChildAt(it.getInt(ARG_ANSWER)) as RadioButton).isChecked = true
+                is Quiz.UniselectionalObjectiveQuestion -> {
+                    inflater.inflate(R.layout.quiz_radio_group, linearLayout)
+
+                    val radioGroup =
+                        linearLayout.getChildAt(linearLayout.childCount - 1) as RadioGroup
+
+                    for (option in options) {
+                        inflater.inflate(R.layout.quiz_radio_button, radioGroup)
+
+                        val index = radioGroup.childCount - 1
+                        val radioButton = radioGroup.getChildAt(index) as RadioButton
+
+                        radioButton.text = option
+                        radioButton.setOnCheckedChangeListener { _, isChecked ->
+                            if (isChecked) {
+                                radioSelected = index
+                            }
+                        }
+                    }
+
+                    savedInstanceState?.let {
+                        (radioGroup.getChildAt(it.getInt(ARG_ANSWER)) as RadioButton).isChecked =
+                            true
+                    }
                 }
-            }
-            else -> {
-                for (option in question.options) {
-                    inflater.inflate(R.layout.quiz_check_box, linearLayout)
 
-                    val index = linearLayout.childCount - 1
-                    val checkBox = linearLayout.getChildAt(index) as CheckBox
+                is Quiz.MultiselectionalObjectiveQuestion -> {
+                    for (option in options) {
+                        inflater.inflate(R.layout.quiz_check_box, linearLayout)
 
-                    checkBox.text = option
-                    checkBox.setOnCheckedChangeListener { buttonView, isChecked ->
-                        if (isChecked) {
-                            if (question.type > 0 && count == question.type) {
-                                buttonView.isChecked = false
-                                context?.shortToast("You cannot choose more than ${question.type}")
+                        val index = linearLayout.childCount - 1
+                        val checkBox = linearLayout.getChildAt(index) as CheckBox
+
+                        checkBox.text = option
+                        checkBox.setOnCheckedChangeListener { buttonView, isChecked ->
+                            if (isChecked) {
+                                if (count > 0 && checkedCount == count) {
+                                    buttonView.isChecked = false
+                                    context?.shortToast("You cannot choose more than $count")
+                                }
+                                else {
+                                    checked.add(index)
+                                    checkedCount++
+                                }
                             }
                             else {
-                                checked.add(index)
-                                count++
+                                checked.remove(index)
+                                checkedCount--
                             }
                         }
-                        else {
-                            checked.remove(index)
-                            count--
-                        }
+                    }
+
+                    checkedCount = 0
+
+                    savedInstanceState?.getIntArray(ARG_ANSWER)?.forEach {
+                        (linearLayout.getChildAt(it) as CheckBox).isChecked = true
                     }
                 }
 
-                count = 0
-
-                savedInstanceState?.getIntArray(ARG_ANSWER)?.forEach {
-                    (linearLayout.getChildAt(it) as CheckBox).isChecked = true
-                }
+                else -> {}
             }
         }
 
@@ -150,11 +162,12 @@ class QuizPageFragment : Fragment() {
          * @return A new instance of fragment QuizPage.
          */
         @JvmStatic
-        fun newInstance(quizId: Int, contentId: Int) =
+        fun newInstance(quizId: String, indexes: IntArray, questionIndex: Int) =
             QuizPageFragment().apply {
                 arguments = Bundle().apply {
-                    putInt(ARG_QUIZ_ID, quizId)
-                    putInt(ARG_CONTENT_ID, contentId)
+                    putString(ARG_QUIZ_ID, quizId)
+                    putIntArray(ARG_INDEXES, indexes)
+                    putInt(ARG_QUESTION_INDEX, questionIndex)
                 }
             }
     }

@@ -2,6 +2,7 @@ package com.wilson.assignment
 
 import android.content.Context
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
@@ -54,7 +55,8 @@ class MainActivity : AppCompatActivity(), UserProfileFragment.EventListener, Log
             insets
         }
 
-        initQuizzes(resources)
+        Log.i("myass", "$quizzes")
+        quizzes.forEach { Log.i("myass", "$it") }
 
         val menu = findViewById<BottomNavigationView>(R.id.menu)
 

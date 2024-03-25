@@ -25,33 +25,35 @@ class QuizActivity : AppCompatActivity() {
             insets
         }
 
-        initQuizzes(resources)
+        quizzesMap[intent.getStringExtra(INTENT_QUIZ_ID)]?.let { quiz ->
+            val pager = findViewById<ViewPager2>(R.id.quizPager)
+            val prevQuiz = findViewById<ImageButton>(R.id.prevQuiz)
+            val nextQuiz = findViewById<ImageButton>(R.id.nextQuiz)
+            val quizPages = arrayListOf<Fragment>()
+            val shuffledIndexes = IntArray(quiz.questions.size).apply { forEachIndexed { index, i -> this[index] = i } }
 
-        val quizId = intent.getIntExtra(INTENT_QUIZ_ID, -1)
-        val quiz = Quizzes[quizId]
-
-        val pager = findViewById<ViewPager2>(R.id.quizPager)
-        val prevQuiz = findViewById<ImageButton>(R.id.prevQuiz)
-        val nextQuiz = findViewById<ImageButton>(R.id.nextQuiz)
-        val quizPages = arrayListOf<Fragment>()
-
-        for (i in 0..quiz.contents.size) {
-            quizPages.add(QuizPageFragment.newInstance(quizId, i))
-        }
-
-        pager.adapter = object: FragmentStateAdapter(this) {
-            override fun getItemCount() = quiz.contents.size
-            override fun createFragment(position: Int) = quizPages[position]
-        }
-
-        pager.registerOnPageChangeCallback(object: ViewPager2.OnPageChangeCallback() {
-            override fun onPageSelected(position: Int) {
-                prevQuiz.isEnabled = position > 0
-                nextQuiz.isEnabled = position + 1 < pager.adapter!!.itemCount
+            if (quiz.allowReorder) {
+                shuffledIndexes.shuffle()
             }
-        })
 
-        prevQuiz.setOnClickListener { pager.currentItem -= 1 }
-        nextQuiz.setOnClickListener { pager.currentItem += 1 }
+            for (i in 0..quiz.questions.size) {
+                quizPages.add(QuizPageFragment.newInstance(quiz.id, shuffledIndexes, i))
+            }
+
+            pager.adapter = object: FragmentStateAdapter(this) {
+                override fun getItemCount() = quiz.questions.size
+                override fun createFragment(position: Int) = quizPages[position]
+            }
+
+            pager.registerOnPageChangeCallback(object: ViewPager2.OnPageChangeCallback() {
+                override fun onPageSelected(position: Int) {
+                    prevQuiz.isEnabled = position > 0
+                    nextQuiz.isEnabled = position + 1 < pager.adapter!!.itemCount
+                }
+            })
+
+            prevQuiz.setOnClickListener { pager.currentItem -= 1 }
+            nextQuiz.setOnClickListener { pager.currentItem += 1 }
+        }
     }
 }

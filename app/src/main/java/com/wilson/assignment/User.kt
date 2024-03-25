@@ -143,15 +143,10 @@ data class User(val username: String, val firstName: String, val lastName: Strin
                     .get()
                     .continueWith {
                         it.result?.takeIf { it.exists() }?.let { doc ->
-                            val firstName =
-                                doc.getString(FIRST_NAME_FIELD) ?: return@continueWith null
-                            val lastName =
-                                doc.getString(LAST_NAME_FIELD) ?: return@continueWith null
-
                             User(
                                 username,
-                                firstName,
-                                lastName,
+                                doc.getString(FIRST_NAME_FIELD) ?: "",
+                                doc.getString(LAST_NAME_FIELD) ?: "",
                             )
                         }
                     }

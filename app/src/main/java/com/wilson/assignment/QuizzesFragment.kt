@@ -47,14 +47,6 @@ class QuizListAdapter(private val context: Context, private val quizList: List<Q
  * A simple [Fragment] subclass.
  */
 class QuizzesFragment : Fragment() {
-//    override fun onCreate(savedInstanceState: Bundle?) {
-//        super.onCreate(savedInstanceState)
-//        arguments?.let {
-//            param1 = it.getString(ARG_PARAM1)
-//            param2 = it.getString(ARG_PARAM2)
-//        }
-//    }
-
     private lateinit var quizList: RecyclerView
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View?
@@ -65,12 +57,12 @@ class QuizzesFragment : Fragment() {
 
         quizList = view.findViewById(R.id.quizList)
         quizList.layoutManager = LinearLayoutManager(context)
-        quizList.adapter = QuizListAdapter(requireContext(), Quizzes)
+        quizList.adapter = QuizListAdapter(requireContext(), quizzes)
 
         search.setOnQueryTextListener(object: SearchView.OnQueryTextListener {
             override fun onQueryTextChange(newText: String?): Boolean {
                 val keywords = (newText ?: "").split(" ").map { it.lowercase() }.toList()
-                val query = Quizzes.filter { quiz -> keywords.all { quiz.name.lowercase().contains(it) } }
+                val query = quizzes.filter { quiz -> keywords.all { quiz.name.lowercase().contains(it) } }
 
                 quizList.swapAdapter(QuizListAdapter(requireContext(), query), true)
 
@@ -79,25 +71,5 @@ class QuizzesFragment : Fragment() {
 
             override fun onQueryTextSubmit(query: String?) = false
         })
-    }
-
-    companion object {
-//        /**
-//         * Use this factory method to create a new instance of
-//         * this fragment using the provided parameters.
-//         *
-//         * @param param1 Parameter 1.
-//         * @param param2 Parameter 2.
-//         * @return A new instance of fragment QuizzesFragment.
-//         */
-//        // TODO: Rename and change types and number of parameters
-//        @JvmStatic
-//        fun newInstance(param1: String, param2: String) =
-//            QuizzesFragment().apply {
-//                arguments = Bundle().apply {
-//                    putString(ARG_PARAM1, param1)
-//                    putString(ARG_PARAM2, param2)
-//                }
-//            }
     }
 }
