@@ -108,6 +108,17 @@
             </LinearLayout>
         </ScrollView>
 
+        <CheckBox
+            android:id="@+id/rememberMe2"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="32dp"
+            android:checked="true"
+            android:text="@string/remember_me"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/scrollView2" />
+
         <Button
             android:id="@+id/signUp"
             android:layout_width="wrap_content"
@@ -116,7 +127,7 @@
             android:text="Sign Up"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/scrollView2" />
+            app:layout_constraintTop_toBottomOf="@+id/rememberMe2" />
 
         <Button
             android:id="@+id/logInLink"

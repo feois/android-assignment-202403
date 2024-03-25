@@ -9,12 +9,16 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import androidx.viewpager2.widget.ViewPager2
 import com.google.android.material.bottomnavigation.BottomNavigationView
+import kotlinx.coroutines.runBlocking
+
+val CREDENTIAL = stringPreferencesKey("credential")
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
@@ -56,6 +60,15 @@ class MainActivity : AppCompatActivity(), UserProfileFragment.EventListener, Log
 
         accountFragment = logInFragment
 
+        runBlocking {
+            User.readCredential(this@MainActivity)?.addOnSuccessListener {
+                if (it == true) {
+                    accountFragment = userProfileFragment
+                    refreshTabs()
+                }
+            }
+        }
+
         tabs = findViewById(R.id.tabs)
         tabs.adapter = TabsAdapter(this, fragments)
         tabs.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
@@ -75,7 +88,7 @@ class MainActivity : AppCompatActivity(), UserProfileFragment.EventListener, Log
         }
     }
 
-    override fun onSignUp(user: User, password: String) {
+    override fun onSignUp(user: User, password: String, remember: Boolean) {
         User.addUser(user, password)
                 .addOnSuccessListener {
                     when (it) {
@@ -85,6 +98,11 @@ class MainActivity : AppCompatActivity(), UserProfileFragment.EventListener, Log
                             accountFragment = userProfileFragment
                             refreshTabs()
                             shortToast("Successfully created account!")
+                            User.session = user
+
+                            if (remember) {
+                                runBlocking { User.storeCredential(this@MainActivity) }
+                            }
                         }
                         false -> shortToast("Username ${user.username} has already been taken")
                         else -> unknownError()
@@ -98,7 +116,7 @@ class MainActivity : AppCompatActivity(), UserProfileFragment.EventListener, Log
         refreshTabs()
     }
 
-    override fun onLogIn(username: String, password: String) {
+    override fun onLogIn(username: String, password: String, remember: Boolean) {
         User.getUser(username)
                 .addOnSuccessListener { user ->
                     if (user == null) {
@@ -114,6 +132,10 @@ class MainActivity : AppCompatActivity(), UserProfileFragment.EventListener, Log
                                             accountFragment = userProfileFragment
                                             refreshTabs()
                                             shortToast("Successfully logged in!")
+
+                                            if (remember) {
+                                                runBlocking { User.storeCredential(this@MainActivity) }
+                                            }
                                         }
                                         false -> shortToast("Password incorrect")
                                         else -> unknownError()
@@ -133,6 +155,7 @@ class MainActivity : AppCompatActivity(), UserProfileFragment.EventListener, Log
     override fun onLogOut() {
         accountFragment = logInFragment
         refreshTabs()
+        runBlocking { User.clearCredential(this@MainActivity) }
     }
 
     private fun refreshTabs() {

@@ -1,7 +1,11 @@
 package com.wilson.assignment
 
+import android.content.Context
+import androidx.datastore.preferences.core.edit
 import com.google.firebase.Firebase
 import com.google.firebase.firestore.firestore
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import java.security.MessageDigest
 
 /**
@@ -46,7 +50,6 @@ object HashUtils {
 
 data class User(val username: String, val firstName: String, val lastName: String) {
     val fullName get() = "$firstName $lastName"
-    var verified = false; private set
 
     fun validate() = listOf(
         validateUsername(username),
@@ -56,16 +59,18 @@ data class User(val username: String, val firstName: String, val lastName: Strin
 
     fun verify(password: String) = collection.document(username).get().continueWith {
         it.result?.let { doc ->
-            if (doc.exists()) {
-                doc.getString(PASSWORD_FIELD) == HashUtils.sha256(password)
-            }
-            else {
-                null
+            doc.takeIf { doc.exists() }?.let {
+                val verified = doc.getString(PASSWORD_FIELD) == HashUtils.sha256(password)
+
+                if (verified) {
+                    session = this
+                }
+
+                verified
             }
         }
     }
 
-    @Suppress("MemberVisibilityCanBePrivate")
     companion object {
         const val USER_COLLECTION = "users"
         const val PASSWORD_FIELD = "password"
@@ -90,6 +95,25 @@ data class User(val username: String, val firstName: String, val lastName: Strin
         val db get() = Firebase.firestore
         val collection get() = db.collection(USER_COLLECTION)
 
+        var session: User? = null; internal set
+
+        suspend fun readCredential(context: Context) =
+            context.dataStore.data.map { it[CREDENTIAL] }.first()?.let { username ->
+                getUser(username).continueWith {
+                    if (it.result == null) {
+                        false
+                    }
+                    else {
+                        session = it.result
+                        true
+                    }
+                }
+            }
+
+        suspend fun storeCredential(context: Context) = session?.apply { context.dataStore.edit { it[CREDENTIAL] = username } }
+
+        suspend fun clearCredential(context: Context) = context.dataStore.edit { it.remove(CREDENTIAL) }
+
         fun hasUser(username: String) = collection.document(username)
                     .get()
                     .continueWith {
@@ -110,9 +134,7 @@ data class User(val username: String, val firstName: String, val lastName: Strin
                                 FIRST_NAME_FIELD to user.firstName,
                                 LAST_NAME_FIELD to user.lastName,
                             ))
-                            .continueWith {
-                                true
-                            }
+                            .continueWith { true }
                 }
             } ?: it
         }
@@ -120,8 +142,7 @@ data class User(val username: String, val firstName: String, val lastName: Strin
         fun getUser(username: String) = collection.document(username)
                     .get()
                     .continueWith {
-                        if (it.result?.exists() == true) {
-                            val doc = it.result!!
+                        it.result?.takeIf { it.exists() }?.let { doc ->
                             val firstName =
                                 doc.getString(FIRST_NAME_FIELD) ?: return@continueWith null
                             val lastName =
@@ -132,9 +153,6 @@ data class User(val username: String, val firstName: String, val lastName: Strin
                                 firstName,
                                 lastName,
                             )
-                        }
-                        else {
-                            null
                         }
                     }
 

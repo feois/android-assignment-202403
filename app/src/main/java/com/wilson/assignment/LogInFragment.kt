@@ -7,6 +7,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.CheckBox
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 
@@ -20,9 +21,10 @@ class LogInFragment : Fragment() {
     private var passwordText: TextInputEditText? = null
     private var loginButton: Button? = null
     private var signUpLinkButton: Button? = null
+    private var rememberMe: CheckBox? = null
 
     interface EventListener {
-        fun onLogIn(username: String, password: String)
+        fun onLogIn(username: String, password: String, remember: Boolean)
         fun onGoToSignUp()
     }
 
@@ -42,6 +44,7 @@ class LogInFragment : Fragment() {
         passwordText = view.findViewById(R.id.passwordText)
         loginButton = view.findViewById(R.id.login)
         signUpLinkButton = view.findViewById(R.id.signUpLink)
+        rememberMe = view.findViewById(R.id.rememberMe)
 
         loginButton?.setOnClickListener {
             val validation = User.validateUsernameAndPassword(usernameText?.text.toString(), passwordText?.text.toString())
@@ -50,7 +53,7 @@ class LogInFragment : Fragment() {
             password?.error = ""
 
             if (validation.isEmpty()) {
-                eventListener?.onLogIn(usernameText?.text.toString(), passwordText?.text.toString())
+                eventListener?.onLogIn(usernameText?.text.toString(), passwordText?.text.toString(), rememberMe!!.isChecked)
             }
             else {
                 for (message in validation.mapNotNull { it.message }) {
