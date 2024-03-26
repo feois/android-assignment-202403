@@ -30,7 +30,7 @@ class QuizActivity : AppCompatActivity() {
             val prevQuiz = findViewById<ImageButton>(R.id.prevQuiz)
             val nextQuiz = findViewById<ImageButton>(R.id.nextQuiz)
             val quizPages = arrayListOf<Fragment>()
-            val shuffledIndexes = IntArray(quiz.questions.size).apply { forEachIndexed { index, i -> this[index] = i } }
+            val shuffledIndexes = IntArray(quiz.questions.size).apply { forEachIndexed { index, i -> this[index] = index } }
 
             if (quiz.allowReorder) {
                 shuffledIndexes.shuffle()
