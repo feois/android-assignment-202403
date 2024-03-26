@@ -23,9 +23,24 @@ val CREDENTIAL = stringPreferencesKey("credential")
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
+@Suppress("SpellCheckingInspection")
+const val LOG_TAG = "myass"
+
+fun logError(s: String, e: Throwable? = null) {
+    if (e == null) {
+        Log.e(LOG_TAG, s)
+    }
+    else {
+        Log.e(LOG_TAG, s, e)
+    }
+}
+fun logInfo(s: String) = Log.i(LOG_TAG, s)
 fun Context.shortToast(s: String) = Toast.makeText(this, s, Toast.LENGTH_SHORT).show()
 fun Context.longToast(s: String) = Toast.makeText(this, s, Toast.LENGTH_LONG).show()
-fun Context.unknownError(e: Throwable? = null) = longToast("Unknown error encountered" + e?.javaClass?.name?.let { ": $it" })
+fun Context.unknownError(e: Throwable? = null) {
+    logError("Error occurred: ", e)
+    longToast("Unknown error encountered" + e?.javaClass?.name?.let { ": $it" })
+}
 
 class TabsAdapter(fragmentActivity: FragmentActivity, private val tabs: Array<Fragment>): FragmentStateAdapter(fragmentActivity) {
     override fun getItemCount() = tabs.size
@@ -54,9 +69,6 @@ class MainActivity : AppCompatActivity(), UserProfileFragment.EventListener, Log
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
         }
-
-        Log.i("myass", "$quizzes")
-        quizzes.forEach { Log.i("myass", "$it") }
 
         val menu = findViewById<BottomNavigationView>(R.id.menu)
 
