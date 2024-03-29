@@ -1,19 +1,25 @@
 package com.wilson.assignment
 
+import android.content.Context
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.google.firebase.Firebase
 import com.google.firebase.firestore.firestore
-
-inline fun <reified T> Map<String, *>.getProp(key: String) = when {
-    !containsKey(key) -> throw PropertyNotFoundException(key)
-    get(key) !is T -> throw PropertyIncompatibleTypeException(key, T::class)
-    else -> get(key) as T
-}
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 fun Map<String, *>.toUser(username: String) = runCatching {
     User(
         username,
-        getProp<String>(User.FIRST_NAME_FIELD),
-        getProp<String>(User.LAST_NAME_FIELD),
+        getProp(User.FIRST_NAME_FIELD),
+        getProp(User.LAST_NAME_FIELD),
     )
 }
 
@@ -59,7 +65,7 @@ data class User(val username: String, val firstName: String, val lastName: Strin
 
         fun hasUser(username: String) = collection.document(username).get().continueWith { it.result.exists() }
 
-        private fun updateUser(user: User, password: String) = collection.document(user.username).update(user.toMap())
+        private fun updateUser(user: User, password: String) = collection.document(user.username).update(user.toMap(password))
 
         fun getUser(username: String) = collection.document(username)
                     .get()
@@ -103,5 +109,98 @@ data class User(val username: String, val firstName: String, val lastName: Strin
             require(lastName.isNotEmpty()) { ERR_EMPTY_LAST_NAME }
             require(lastName.all { it.isLetter() || it == ' ' }) { ERR_LAST_NAME_INVALID_CHARACTER }
         }.exceptionOrNull()
+    }
+}
+
+
+class UserViewModel: ViewModel() {
+    private val CREDENTIAL = stringPreferencesKey("credential")
+
+    private val userLiveData = MutableLiveData<User?>()
+    val user: LiveData<User?> get() = userLiveData
+
+    private val signUpResultLiveData = MutableLiveData<Result<Unit>>()
+    val signUpResult: LiveData<Result<Unit>> get() = signUpResultLiveData
+
+    private val loginResultLiveData = MutableLiveData<Result<Unit>>()
+    val loginResult: LiveData<Result<Unit>> get() = loginResultLiveData
+
+    private val databaseExceptionLiveData = MutableLiveData<Throwable>()
+    val databaseException: LiveData<Throwable> get() = databaseExceptionLiveData
+
+    fun readCredential(context: Context, successCallback: () -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            context.dataStore.data.map { it[CREDENTIAL] }.first()?.let { username ->
+                User.getUser(username)
+                        .addOnSuccessListener { result ->
+                            result.fold({
+                                userLiveData.value = it
+                                successCallback()
+                            }, {
+                                databaseExceptionLiveData.value = it
+                            })
+                        }
+                        .addOnFailureListener { databaseExceptionLiveData.value = it }
+            }
+        }
+    }
+
+    private suspend fun storeCredential(context: Context) {
+        withContext(Dispatchers.IO) {
+            user.value?.run { context.dataStore.edit { it[CREDENTIAL] = username } }
+        }
+    }
+
+    fun login(username: String, password: String, credentialContext: Context? = null) {
+        User.collection.document(username).get()
+                .addOnSuccessListener {
+                    when {
+                        !it.exists() -> loginResultLiveData.value = Result.failure(UserNotFoundException(username))
+                        it.getString(User.PASSWORD_FIELD) != HashUtils.sha256(password)
+                        -> loginResultLiveData.value = Result.failure(IncorrectPasswordException())
+                        else -> it.data!!.toUser(username).fold({ user ->
+                            userLiveData.value = user
+                            credentialContext?.let { context ->
+                                viewModelScope.launch {
+                                    storeCredential(context)
+                                }
+                            }
+                            loginResultLiveData.value = Result.success(Unit)
+                        }, { e ->
+                            databaseExceptionLiveData.value = e
+                        })
+                    }
+                }
+                .addOnFailureListener { databaseExceptionLiveData.value = it }
+    }
+
+    fun signUp(user: User, password: String, credentialContext: Context? = null) {
+        User.hasUser(user.username)
+                .addOnSuccessListener { userExists ->
+                    when {
+                        userExists -> signUpResultLiveData.value = Result.failure(UserAlreadyExistsException(user.username))
+                        else -> User.collection.document(user.username)
+                                .set(user.toMap(password))
+                                .addOnSuccessListener {
+                                    credentialContext?.let { context ->
+                                        viewModelScope.launch {
+                                            storeCredential(context)
+                                        }
+                                    }
+                                    signUpResultLiveData.value = Result.success(Unit)
+                                }
+                                .addOnFailureListener { databaseExceptionLiveData.value = it }
+                    }
+                }
+                .addOnFailureListener { databaseExceptionLiveData.value = it }
+    }
+
+    fun logout(credentialContext: Context? = null) {
+        userLiveData.value = null
+        credentialContext?.apply {
+            viewModelScope.launch {
+                dataStore.edit { it.remove(CREDENTIAL) }
+            }
+        }
     }
 }

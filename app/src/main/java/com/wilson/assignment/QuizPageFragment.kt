@@ -1,7 +1,6 @@
 package com.wilson.assignment
 
 import android.os.Bundle
-import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -11,6 +10,8 @@ import android.widget.LinearLayout
 import android.widget.RadioButton
 import android.widget.RadioGroup
 import android.widget.TextView
+import androidx.fragment.app.Fragment
+import androidx.fragment.app.activityViewModels
 
 // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
 private const val ARG_QUIZ_ID = "quiz_id"
@@ -33,7 +34,8 @@ class QuizPageFragment : Fragment() {
     private var radioSelected = 0
     private val checked = mutableSetOf<Int>()
 
-    private val question by lazy { quizzesMap[quizId]?.run { questions[indexes[questionIndex]] } }
+    private val quizCache: QuizCacheViewModel by activityViewModels()
+    private val question by lazy { quizCache.quiz.value!!.questions[indexes[questionIndex]] }
 
     override fun onSaveInstanceState(outState: Bundle) {
         when (question) {
@@ -65,7 +67,7 @@ class QuizPageFragment : Fragment() {
     ): View? {
         val view = inflater.inflate(R.layout.fragment_quiz_page, container, false)
 
-        question?.run {
+        question.run {
             val linearLayout = view.findViewById<LinearLayout>(R.id.quizFragmentLinearLayout)
             val questionText = view.findViewById<TextView>(R.id.question)
 
@@ -122,19 +124,17 @@ class QuizPageFragment : Fragment() {
 
                         checkBox.text = option
                         checkBox.setOnCheckedChangeListener { buttonView, isChecked ->
-                            if (isChecked) {
-                                if (count > 0 && checkedCount == count) {
-                                    buttonView.isChecked = false
-                                    context?.shortToast("You cannot choose more than $count")
-                                }
-                                else {
-                                    checked.add(index)
-                                    checkedCount++
-                                }
-                            }
-                            else {
+                            if (!isChecked) {
                                 checked.remove(index)
                                 checkedCount--
+                            }
+                            else if (hint && checkedCount == answers.size) {
+                                buttonView.isChecked = false
+                                context?.shortToast("You cannot choose more than ${options.size}")
+                            }
+                            else {
+                                checked.add(index)
+                                checkedCount++
                             }
                         }
                     }

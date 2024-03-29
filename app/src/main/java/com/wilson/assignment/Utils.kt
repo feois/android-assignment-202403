@@ -26,8 +26,20 @@ fun logError(s: String, e: Throwable? = null) = Log.e(LOG_TAG, s, e)
 
 fun Context.shortToast(s: String) = Toast.makeText(this, s, Toast.LENGTH_SHORT).show()
 fun Context.longToast(s: String) = Toast.makeText(this, s, Toast.LENGTH_LONG).show()
+fun Context.errorToast(s: String, e: Throwable) {
+    logError(s, e)
+    longToast("Error: ${e::class.simpleName}")
+}
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
+
+inline fun <reified T> Map<String, *>.getProp(key: String) = when {
+    !containsKey(key) -> throw PropertyNotFoundException(key)
+    get(key) !is T -> throw PropertyIncompatibleTypeException(key, T::class)
+    else -> get(key) as T
+}
+
+inline fun <reified T> Map<String, *>.getListProp(key: String) = getProp<List<*>>(key).filterIsInstance<T>()
 
 /**
  * Hashing Utils

@@ -7,8 +7,12 @@ import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.Animation
+import android.view.animation.RotateAnimation
+import android.widget.ImageButton
 import android.widget.SearchView
 import android.widget.TextView
+import androidx.fragment.app.activityViewModels
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 
@@ -47,6 +51,8 @@ class QuizListAdapter(private val context: Context, private val quizList: List<Q
  * A simple [Fragment] subclass.
  */
 class QuizzesFragment : Fragment() {
+    private val quizViewModel: QuizViewModel by activityViewModels()
+
     private lateinit var quizList: RecyclerView
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View?
@@ -54,17 +60,38 @@ class QuizzesFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         val search = view.findViewById<SearchView>(R.id.search)
+        val refresh = view.findViewById<ImageButton>(R.id.refreshQuizzes)
 
         quizList = view.findViewById(R.id.quizList)
         quizList.layoutManager = LinearLayoutManager(context)
-        quizList.adapter = QuizListAdapter(requireContext(), quizzes)
+
+        quizViewModel.quizzes.observe(viewLifecycleOwner) {
+            quizList.adapter = QuizListAdapter(requireContext(), it)
+        }
+
+        refresh.setOnClickListener { button ->
+            button.animation = RotateAnimation(0f, 360f,
+                    Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 0.5f)
+                    .apply {
+                        repeatCount = -1
+                        duration = 2000
+                    }
+
+            quizViewModel.updateQuizzes().addOnCompleteListener {
+                if (it.isSuccessful && it.result.isSuccess) {
+                    button.clearAnimation()
+                }
+            }
+        }
 
         search.setOnQueryTextListener(object: SearchView.OnQueryTextListener {
             override fun onQueryTextChange(newText: String?): Boolean {
-                val keywords = (newText ?: "").split(" ").map { it.lowercase() }.toList()
-                val query = quizzes.filter { quiz -> keywords.all { quiz.name.lowercase().contains(it) } }
+                quizViewModel.quizzes.value?.run {
+                    val keywords = (newText ?: "").split(" ").map { it.lowercase() }.toList()
+                    val query = filter { quiz -> keywords.all { quiz.name.lowercase().contains(it) } }
 
-                quizList.swapAdapter(QuizListAdapter(requireContext(), query), true)
+                    quizList.swapAdapter(QuizListAdapter(requireContext(), query), true)
+                }
 
                 return false
             }
