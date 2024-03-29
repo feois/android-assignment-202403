@@ -1,74 +1,36 @@
 package com.wilson.assignment
 
-import android.content.Context
-import androidx.datastore.preferences.core.edit
 import com.google.firebase.Firebase
 import com.google.firebase.firestore.firestore
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
-import java.security.MessageDigest
 
-/**
- * Hashing Utils
- * @author Sam Clarke <www.samclarke.com>
- * @license MIT
- */
-object HashUtils {
-    fun sha512(input: String) = hashString("SHA-512", input)
+inline fun <reified T> Map<String, *>.getProp(key: String) = when {
+    !containsKey(key) -> throw PropertyNotFoundException(key)
+    get(key) !is T -> throw PropertyIncompatibleTypeException(key, T::class)
+    else -> get(key) as T
+}
 
-    fun sha256(input: String) = hashString("SHA-256", input)
-
-    fun sha1(input: String) = hashString("SHA-1", input)
-
-    /**
-     * Supported algorithms on Android:
-     *
-     * Algorithm	Supported API Levels
-     * MD5          1+
-     * SHA-1	    1+
-     * SHA-224	    1-8,22+
-     * SHA-256	    1+
-     * SHA-384	    1+
-     * SHA-512	    1+
-     */
-    private fun hashString(type: String, input: String): String {
-        val HEX_CHARS = "0123456789ABCDEF"
-        val bytes = MessageDigest
-                .getInstance(type)
-                .digest(input.toByteArray())
-        val result = StringBuilder(bytes.size * 2)
-
-        bytes.forEach {
-            val i = it.toInt()
-            result.append(HEX_CHARS[i shr 4 and 0x0f])
-            result.append(HEX_CHARS[i and 0x0f])
-        }
-
-        return result.toString()
-    }
+fun Map<String, *>.toUser(username: String) = runCatching {
+    User(
+        username,
+        getProp<String>(User.FIRST_NAME_FIELD),
+        getProp<String>(User.LAST_NAME_FIELD),
+    )
 }
 
 data class User(val username: String, val firstName: String, val lastName: String) {
     val fullName get() = "$firstName $lastName"
 
-    fun validate() = listOf(
-        validateUsername(username),
-        validateFirstName(firstName),
-        validateLastName(lastName),
-    ).mapNotNull { it.exceptionOrNull() }
+    fun validate(password: String? = null) = buildList {
+        password?.let { validatePassword(it) }?.run { add(this) }
+        validateUsername(username)?.run { add(this) }
+        validateFirstName(firstName)?.run { add(this) }
+        validateLastName(lastName)?.run { add(this) }
+    }
 
-    fun verify(password: String) = collection.document(username).get().continueWith {
-        it.result?.let { doc ->
-            doc.takeIf { doc.exists() }?.let {
-                val verified = doc.getString(PASSWORD_FIELD) == HashUtils.sha256(password)
-
-                if (verified) {
-                    session = this
-                }
-
-                verified
-            }
-        }
+    fun toMap(password: String? = null) = buildMap<String, Any> {
+        password?.run { set(PASSWORD_FIELD, this) }
+        set(FIRST_NAME_FIELD, firstName)
+        set(LAST_NAME_FIELD, lastName)
     }
 
     companion object {
@@ -95,63 +57,23 @@ data class User(val username: String, val firstName: String, val lastName: Strin
         val db get() = Firebase.firestore
         val collection get() = db.collection(USER_COLLECTION)
 
-        var session: User? = null; internal set
+        fun hasUser(username: String) = collection.document(username).get().continueWith { it.result.exists() }
 
-        suspend fun readCredential(context: Context) =
-            context.dataStore.data.map { it[CREDENTIAL] }.first()?.let { username ->
-                getUser(username).continueWith {
-                    if (it.result == null) {
-                        false
-                    }
-                    else {
-                        session = it.result
-                        true
-                    }
-                }
-            }
-
-        suspend fun storeCredential(context: Context) = session?.apply { context.dataStore.edit { it[CREDENTIAL] = username } }
-
-        suspend fun clearCredential(context: Context) = context.dataStore.edit { it.remove(CREDENTIAL) }
-
-        fun hasUser(username: String) = collection.document(username)
-                    .get()
-                    .continueWith {
-                        it.result?.exists()
-                    }
-
-        fun addUser(user: User, password: String) = hasUser(user.username).continueWithTask {
-            it.result?.let { userExist ->
-                if (userExist) {
-                    it.continueWith {
-                        false
-                    }
-                }
-                else {
-                    collection.document(user.username)
-                            .set(hashMapOf(
-                                PASSWORD_FIELD to HashUtils.sha256(password),
-                                FIRST_NAME_FIELD to user.firstName,
-                                LAST_NAME_FIELD to user.lastName,
-                            ))
-                            .continueWith { true }
-                }
-            } ?: it
-        }
+        private fun updateUser(user: User, password: String) = collection.document(user.username).update(user.toMap())
 
         fun getUser(username: String) = collection.document(username)
                     .get()
-                    .continueWith {
-                        it.result?.takeIf { it.exists() }?.let { doc ->
-                            User(
-                                username,
-                                doc.getString(FIRST_NAME_FIELD) ?: "",
-                                doc.getString(LAST_NAME_FIELD) ?: "",
-                            )
+                    .continueWith { task ->
+                        task.runCatching {
+                            when {
+                                !isSuccessful -> throw task.exception!!
+                                !result.exists() -> throw UserNotFoundException(username)
+                                else -> result.data!!.toUser(username).getOrThrow()
+                            }
                         }
                     }
 
-        fun errorType(error: String) = when (error) {
+        fun errorType(error: String?) = when (error) {
             ERR_USERNAME_INVALID_CHARACTER, ERR_EMPTY_USERNAME -> ERR_USERNAME
             ERR_PASSWORD_WHITESPACE, ERR_MIN_PASSWORD_LENGTH -> ERR_PASSWORD
             ERR_EMPTY_FIRST_NAME, ERR_FIRST_NAME_INVALID_CHARACTER -> ERR_FIRST_NAME
@@ -162,24 +84,24 @@ data class User(val username: String, val firstName: String, val lastName: Strin
         fun validateUsername(username: String) = runCatching {
             require(username.isNotEmpty()) { ERR_EMPTY_USERNAME }
             require(username.all { it.isLetterOrDigit() || it == '_' }) { ERR_USERNAME_INVALID_CHARACTER }
-        }
+        }.exceptionOrNull()
 
         fun validatePassword(password: String) = runCatching {
             require(password.length >= MIN_PASSWORD_LENGTH) { ERR_MIN_PASSWORD_LENGTH }
             require(password.none { it.isWhitespace() }) { ERR_PASSWORD_WHITESPACE }
-        }
+        }.exceptionOrNull()
 
         fun validateUsernameAndPassword(username: String, password: String)
-            = listOf(validateUsername(username), validatePassword(password)).mapNotNull { it.exceptionOrNull() }
+            = listOf(validateUsername(username), validatePassword(password)).filterNotNull()
 
         fun validateFirstName(firstName: String) = runCatching {
             require(firstName.isNotEmpty()) { ERR_EMPTY_FIRST_NAME }
             require(firstName.all { it.isLetter() || it == ' ' }) { ERR_FIRST_NAME_INVALID_CHARACTER }
-        }
+        }.exceptionOrNull()
 
         fun validateLastName(lastName: String) = runCatching {
             require(lastName.isNotEmpty()) { ERR_EMPTY_LAST_NAME }
             require(lastName.all { it.isLetter() || it == ' ' }) { ERR_LAST_NAME_INVALID_CHARACTER }
-        }
+        }.exceptionOrNull()
     }
 }

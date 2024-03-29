@@ -2,57 +2,133 @@ package com.wilson.assignment
 
 import android.content.Context
 import android.os.Bundle
-import android.util.Log
-import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.preferencesDataStore
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import androidx.viewpager2.widget.ViewPager2
 import com.google.android.material.bottomnavigation.BottomNavigationView
-import kotlinx.coroutines.runBlocking
-
-val CREDENTIAL = stringPreferencesKey("credential")
-
-val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
-
-@Suppress("SpellCheckingInspection")
-const val LOG_TAG = "myass"
-
-fun logError(s: String, e: Throwable? = null) {
-    if (e == null) {
-        Log.e(LOG_TAG, s)
-    }
-    else {
-        Log.e(LOG_TAG, s, e)
-    }
-}
-fun logInfo(s: String) = Log.i(LOG_TAG, s)
-fun Context.shortToast(s: String) = Toast.makeText(this, s, Toast.LENGTH_SHORT).show()
-fun Context.longToast(s: String) = Toast.makeText(this, s, Toast.LENGTH_LONG).show()
-fun Context.unknownError(e: Throwable? = null) {
-    logError("Error occurred: ", e)
-    longToast("Unknown error encountered" + e?.javaClass?.name?.let { ": $it" })
-}
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class TabsAdapter(fragmentActivity: FragmentActivity, private val tabs: Array<Fragment>): FragmentStateAdapter(fragmentActivity) {
     override fun getItemCount() = tabs.size
     override fun createFragment(position: Int) = tabs[position]
 }
 
-class MainActivity : AppCompatActivity(), UserProfileFragment.EventListener, LogInFragment.EventListener, SignUpFragment.EventListener {
+class UserViewModel: ViewModel() {
+    private val CREDENTIAL = stringPreferencesKey("credential")
+
+    private val userLiveData = MutableLiveData<User?>()
+    val user: LiveData<User?> get() = userLiveData
+
+    private val signUpResultLiveData = MutableLiveData<Result<Unit>>()
+    val signUpResult: LiveData<Result<Unit>> get() = signUpResultLiveData
+
+    private val loginResultLiveData = MutableLiveData<Result<Unit>>()
+    val loginResult: LiveData<Result<Unit>> get() = loginResultLiveData
+
+    private val databaseExceptionLiveData = MutableLiveData<Throwable>()
+    val databaseException: LiveData<Throwable> get() = databaseExceptionLiveData
+
+    fun readCredential(context: Context, successCallback: () -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            context.dataStore.data.map { it[CREDENTIAL] }.first()?.let { username ->
+                User.getUser(username)
+                        .addOnSuccessListener { result ->
+                            result.fold({
+                                userLiveData.value = it
+                                successCallback()
+                            }, {
+                                databaseExceptionLiveData.value = it
+                            })
+                        }
+                        .addOnFailureListener { databaseExceptionLiveData.value = it }
+            }
+        }
+    }
+
+    private suspend fun storeCredential(context: Context) {
+        withContext(Dispatchers.IO) {
+            user.value?.run { context.dataStore.edit { it[CREDENTIAL] = username } }
+        }
+    }
+
+    fun login(username: String, password: String, credentialContext: Context? = null) {
+        User.collection.document(username).get()
+                .addOnSuccessListener {
+                    when {
+                        !it.exists() -> loginResultLiveData.value = Result.failure(UserNotFoundException(username))
+                        it.getString(User.PASSWORD_FIELD) != HashUtils.sha256(password)
+                                -> loginResultLiveData.value = Result.failure(IncorrectPasswordException())
+                        else -> it.data!!.toUser(username).fold({ user ->
+                            userLiveData.value = user
+                            credentialContext?.let { context ->
+                                viewModelScope.launch {
+                                    storeCredential(context)
+                                }
+                            }
+                            loginResultLiveData.value = Result.success(Unit)
+                        }, { e ->
+                            databaseExceptionLiveData.value = e
+                        })
+                    }
+                }
+                .addOnFailureListener { databaseExceptionLiveData.value = it }
+    }
+
+    fun signUp(user: User, password: String, credentialContext: Context? = null) {
+        User.hasUser(user.username)
+                .addOnSuccessListener { userExists ->
+                    when {
+                        userExists -> signUpResultLiveData.value = Result.failure(UserAlreadyExistsException(user.username))
+                        else -> User.collection.document(user.username)
+                                .set(user.toMap(password))
+                                .addOnSuccessListener {
+                                    credentialContext?.let { context ->
+                                        viewModelScope.launch {
+                                            storeCredential(context)
+                                        }
+                                    }
+                                    signUpResultLiveData.value = Result.success(Unit)
+                                }
+                                .addOnFailureListener { databaseExceptionLiveData.value = it }
+                    }
+                }
+                .addOnFailureListener { databaseExceptionLiveData.value = it }
+    }
+
+    fun logout(credentialContext: Context? = null) {
+        userLiveData.value = null
+        credentialContext?.apply {
+            viewModelScope.launch {
+                dataStore.edit { it.remove(CREDENTIAL) }
+            }
+        }
+    }
+}
+
+class MainActivity : AppCompatActivity(), LogInFragment.EventListener, SignUpFragment.EventListener {
     private val quizzesFragment = QuizzesFragment()
     private val notificationsFragment = NotificationsFragment()
     private val userProfileFragment = UserProfileFragment()
     private val logInFragment = LogInFragment()
     private val signUpFragment = SignUpFragment()
+
+    private val userViewModel: UserViewModel by viewModels()
 
     private lateinit var accountFragment: Fragment
 
@@ -74,13 +150,9 @@ class MainActivity : AppCompatActivity(), UserProfileFragment.EventListener, Log
 
         accountFragment = logInFragment
 
-        runBlocking {
-            User.readCredential(this@MainActivity)?.addOnSuccessListener {
-                if (it == true) {
-                    accountFragment = userProfileFragment
-                    refreshTabs()
-                }
-            }
+        userViewModel.readCredential(this) {
+            accountFragment = userProfileFragment
+            refreshTabs()
         }
 
         tabs = findViewById(R.id.tabs)
@@ -100,29 +172,40 @@ class MainActivity : AppCompatActivity(), UserProfileFragment.EventListener, Log
             }
             true
         }
-    }
 
-    override fun onSignUp(user: User, password: String, remember: Boolean) {
-        User.addUser(user, password)
-                .addOnSuccessListener {
-                    when (it) {
-                        true -> {
-                            logInFragment.clearInput()
-                            signUpFragment.clearInput()
-                            accountFragment = userProfileFragment
-                            refreshTabs()
-                            shortToast("Successfully created account!")
-                            User.session = user
+        userViewModel.user.observe(this) {
+            if (it == null) {
+                accountFragment = logInFragment
+                refreshTabs()
+            }
+        }
 
-                            if (remember) {
-                                runBlocking { User.storeCredential(this@MainActivity) }
-                            }
-                        }
-                        false -> shortToast("Username ${user.username} has already been taken")
-                        else -> unknownError()
-                    }
-                }
-                .addOnFailureListener { unknownError(it) }
+        userViewModel.databaseException.observe(this) { logError("Database Error", it) }
+
+        userViewModel.loginResult.observe(this) {
+            if (it.isSuccess) {
+                logInFragment.clearInput()
+                signUpFragment.clearInput()
+                accountFragment = userProfileFragment
+                refreshTabs()
+                shortToast("Successfully logged in!")
+            }
+        }
+
+        userViewModel.signUpResult.observe(this) {
+            if (it.isSuccess) {
+                logInFragment.clearInput()
+                signUpFragment.clearInput()
+                accountFragment = userProfileFragment
+                refreshTabs()
+                shortToast("Successfully created account!")
+            }
+        }
+
+        userViewModel.databaseException.observe(this) {
+            longToast("Error: ${it::class.simpleName}")
+            logError("Database Error encountered", it)
+        }
     }
 
     override fun onGoToSignUp() {
@@ -130,46 +213,9 @@ class MainActivity : AppCompatActivity(), UserProfileFragment.EventListener, Log
         refreshTabs()
     }
 
-    override fun onLogIn(username: String, password: String, remember: Boolean) {
-        User.getUser(username)
-                .addOnSuccessListener { user ->
-                    if (user == null) {
-                        shortToast("User $username not found")
-                    }
-                    else {
-                        user.verify(password)
-                                .addOnSuccessListener {
-                                    when (it) {
-                                        true -> {
-                                            logInFragment.clearInput()
-                                            signUpFragment.clearInput()
-                                            accountFragment = userProfileFragment
-                                            refreshTabs()
-                                            shortToast("Successfully logged in!")
-
-                                            if (remember) {
-                                                runBlocking { User.storeCredential(this@MainActivity) }
-                                            }
-                                        }
-                                        false -> shortToast("Password incorrect")
-                                        else -> unknownError()
-                                    }
-                                }
-                                .addOnFailureListener { unknownError(it) }
-                    }
-                }
-                .addOnFailureListener { unknownError(it) }
-    }
-
     override fun onGoToLogIn() {
         accountFragment = logInFragment
         refreshTabs()
-    }
-
-    override fun onLogOut() {
-        accountFragment = logInFragment
-        refreshTabs()
-        runBlocking { User.clearCredential(this@MainActivity) }
     }
 
     private fun refreshTabs() {

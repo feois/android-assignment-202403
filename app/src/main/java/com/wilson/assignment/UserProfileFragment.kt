@@ -1,20 +1,16 @@
 package com.wilson.assignment
 
-import android.content.Context
 import android.os.Bundle
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.TextView
+import androidx.fragment.app.activityViewModels
 
 class UserProfileFragment : Fragment() {
-    @Suppress("MemberVisibilityCanBePrivate")
-    var eventListener: EventListener? = null
-
-    fun interface EventListener {
-        fun onLogOut()
-    }
+    private val userViewModel: UserViewModel by activityViewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -23,23 +19,23 @@ class UserProfileFragment : Fragment() {
         }
     }
 
-    override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View? {
-        val view = inflater.inflate(R.layout.fragment_user_profile, container, false)
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,
+                              savedInstanceState: Bundle?): View?
+        = inflater.inflate(R.layout.fragment_user_profile, container, false)
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         val logoutButton = view.findViewById<Button>(R.id.logout)
+        val usernameLabel = view.findViewById<TextView>(R.id.profileUsername)
 
-        logoutButton.setOnClickListener { eventListener?.onLogOut() }
+        logoutButton.setOnClickListener { userViewModel.logout(context) }
 
-        return view
-    }
-
-    override fun onAttach(context: Context) {
-        super.onAttach(context)
-
-        if (context is EventListener) {
-            eventListener = context
+        userViewModel.user.observe(viewLifecycleOwner) {
+            it?.run {
+                usernameLabel.text = """
+                    Username: ${username}
+                    Name: ${fullName}
+                """.trimIndent()
+            }
         }
     }
 }
