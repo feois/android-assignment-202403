@@ -53,15 +53,17 @@ class LogInFragment : Fragment() {
             logInfo("click")
 
             if (validation.isEmpty()) {
-                userViewModel.login(usernameText.text.toString(), passwordText.text.toString(), context.takeIf { rememberMe.isChecked })
+                userViewModel.login(
+                    usernameText.text.toString(),
+                    passwordText.text.toString(),
+                    requireContext().dataStore.takeIf { rememberMe.isChecked },
+                )
             }
             else {
-                for (message in validation.mapNotNull { it.message }) {
-                    User.errorType(message)?.let { errorType ->
-                        when (errorType) {
-                            User.ERR_USERNAME -> username.error = message
-                            User.ERR_PASSWORD -> password.error = message
-                        }
+                for (e in validation) {
+                    when (e) {
+                        is UsernameException -> username.error = e.message
+                        is PasswordException -> password.error = e.message
                     }
                 }
 

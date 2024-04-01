@@ -35,6 +35,14 @@
             android:contentDescription="@string/prev_quiz"
             app:srcCompat="@android:drawable/ic_media_rew" />
 
+        <Button
+            android:id="@+id/submit"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:enabled="false"
+            android:text="Submit" />
+
         <ImageButton
             android:id="@+id/nextQuiz"
             android:layout_width="0dp"

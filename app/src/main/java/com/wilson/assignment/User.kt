@@ -1,6 +1,9 @@
 package com.wilson.assignment
 
 import android.content.Context
+import android.content.Intent
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.lifecycle.LiveData
@@ -14,14 +17,25 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.IllegalArgumentException
 
-fun Map<String, *>.toUser(username: String) = runCatching {
+fun FirestoreMap.toUser(username: String) = runCatching {
     User(
         username,
         getProp(User.FIRST_NAME_FIELD),
         getProp(User.LAST_NAME_FIELD),
     )
 }
+
+abstract class UsernameException(message: String): IllegalArgumentException(message)
+class EmptyUsernameException: UsernameException("Username cannot be empty")
+class InvalidCharUsernameException: UsernameException("Username must consist of only letters, digits and underscore")
+abstract class PasswordException(message: String): IllegalArgumentException(message)
+class PasswordLengthException: PasswordException("Password must consist of at least ${User.MIN_PASSWORD_LENGTH} characters")
+class InvalidCharPasswordException: PasswordException("Password must not contain any whitespace")
+abstract class NameException(message: String, val isFirst: Boolean): IllegalArgumentException(message)
+class EmptyNameException(isFirst: Boolean): NameException("Name cannot be empty", isFirst)
+class InvalidCharNameException(isFirst: Boolean): NameException("Name must only consist of only letters or space", isFirst)
 
 data class User(val username: String, val firstName: String, val lastName: String) {
     val fullName get() = "$firstName $lastName"
@@ -47,25 +61,12 @@ data class User(val username: String, val firstName: String, val lastName: Strin
 
         const val MIN_PASSWORD_LENGTH = 8
 
-        const val ERR_USERNAME = "Invalid username"
-        const val ERR_EMPTY_USERNAME = "Username cannot be empty"
-        const val ERR_USERNAME_INVALID_CHARACTER = "Username must consist of only letters, digits and underscore"
-        const val ERR_PASSWORD = "Invalid password"
-        const val ERR_MIN_PASSWORD_LENGTH = "Password must consist of at least $MIN_PASSWORD_LENGTH characters"
-        const val ERR_PASSWORD_WHITESPACE = "Password must not contain any whitespace"
-        const val ERR_FIRST_NAME = "Invalid first name"
-        const val ERR_EMPTY_FIRST_NAME = "First name cannot be empty"
-        const val ERR_FIRST_NAME_INVALID_CHARACTER = "First Name must only consist of only letters and space"
-        const val ERR_LAST_NAME = "Invalid last name"
-        const val ERR_EMPTY_LAST_NAME = "Last name cannot be empty"
-        const val ERR_LAST_NAME_INVALID_CHARACTER = "Last Name must only consist of only letters and space"
-
         val db get() = Firebase.firestore
         val collection get() = db.collection(USER_COLLECTION)
 
         fun hasUser(username: String) = collection.document(username).get().continueWith { it.result.exists() }
 
-        private fun updateUser(user: User, password: String) = collection.document(user.username).update(user.toMap(password))
+        fun updateUser(username: String, map: Map<String, Any>) = collection.document(username).update(map)
 
         fun getUser(username: String) = collection.document(username)
                     .get()
@@ -79,36 +80,34 @@ data class User(val username: String, val firstName: String, val lastName: Strin
                         }
                     }
 
-        fun errorType(error: String?) = when (error) {
-            ERR_USERNAME_INVALID_CHARACTER, ERR_EMPTY_USERNAME -> ERR_USERNAME
-            ERR_PASSWORD_WHITESPACE, ERR_MIN_PASSWORD_LENGTH -> ERR_PASSWORD
-            ERR_EMPTY_FIRST_NAME, ERR_FIRST_NAME_INVALID_CHARACTER -> ERR_FIRST_NAME
-            ERR_EMPTY_LAST_NAME, ERR_LAST_NAME_INVALID_CHARACTER -> ERR_LAST_NAME
+        fun validateUsername(username: String) = when {
+            username.isEmpty() -> EmptyUsernameException()
+            !username.all { it.isLetterOrDigit() || it == '_' } -> InvalidCharUsernameException()
             else -> null
         }
 
-        fun validateUsername(username: String) = runCatching {
-            require(username.isNotEmpty()) { ERR_EMPTY_USERNAME }
-            require(username.all { it.isLetterOrDigit() || it == '_' }) { ERR_USERNAME_INVALID_CHARACTER }
-        }.exceptionOrNull()
+        fun validatePassword(password: String) = when {
+            password.length < MIN_PASSWORD_LENGTH -> PasswordLengthException()
+            password.any { it.isWhitespace() } -> InvalidCharPasswordException()
+            else -> null
+        }
 
-        fun validatePassword(password: String) = runCatching {
-            require(password.length >= MIN_PASSWORD_LENGTH) { ERR_MIN_PASSWORD_LENGTH }
-            require(password.none { it.isWhitespace() }) { ERR_PASSWORD_WHITESPACE }
-        }.exceptionOrNull()
+        fun validateUsernameAndPassword(username: String, password: String) = buildList {
+            validateUsername(username)?.run { add(this) }
+            validatePassword(password)?.run { add(this) }
+        }
 
-        fun validateUsernameAndPassword(username: String, password: String)
-            = listOf(validateUsername(username), validatePassword(password)).filterNotNull()
+        fun validateFirstName(firstName: String) = when {
+            firstName.isEmpty() -> EmptyNameException(true)
+            !firstName.all { it.isLetter() || it == ' ' } -> InvalidCharNameException(true)
+            else -> null
+        }
 
-        fun validateFirstName(firstName: String) = runCatching {
-            require(firstName.isNotEmpty()) { ERR_EMPTY_FIRST_NAME }
-            require(firstName.all { it.isLetter() || it == ' ' }) { ERR_FIRST_NAME_INVALID_CHARACTER }
-        }.exceptionOrNull()
-
-        fun validateLastName(lastName: String) = runCatching {
-            require(lastName.isNotEmpty()) { ERR_EMPTY_LAST_NAME }
-            require(lastName.all { it.isLetter() || it == ' ' }) { ERR_LAST_NAME_INVALID_CHARACTER }
-        }.exceptionOrNull()
+        fun validateLastName(lastName: String) = when {
+            lastName.isEmpty() -> EmptyNameException(false)
+            !lastName.all { it.isLetter() || it == ' ' } -> InvalidCharNameException(false)
+            else -> null
+        }
     }
 }
 
@@ -128,30 +127,39 @@ class UserViewModel: ViewModel() {
     private val databaseExceptionLiveData = MutableLiveData<Throwable>()
     val databaseException: LiveData<Throwable> get() = databaseExceptionLiveData
 
-    fun readCredential(context: Context, successCallback: () -> Unit) {
+    private lateinit var passwordCache: String
+
+    fun readCredential(dataStore: DataStore<Preferences>, successCallback: () -> Unit) {
         viewModelScope.launch(Dispatchers.IO) {
-            context.dataStore.data.map { it[CREDENTIAL] }.first()?.let { username ->
-                User.getUser(username)
-                        .addOnSuccessListener { result ->
-                            result.fold({
-                                userLiveData.value = it
-                                successCallback()
-                            }, {
-                                databaseExceptionLiveData.value = it
-                            })
+            dataStore.data.map { it[CREDENTIAL] }.first()?.let { username ->
+                User.collection.document(username).get()
+                        .addOnSuccessListener {
+                            if (it.exists()) {
+                                it.data!!.runCatching {
+                                    val password = getProp<String>(User.PASSWORD_FIELD)
+                                    val user = toUser(username).getOrThrow()
+
+                                    userLiveData.value = user
+                                    passwordCache = password
+                                    successCallback()
+                                }.exceptionOrNull()?.run { databaseExceptionLiveData.value = this }
+                            }
+                            else {
+                                databaseExceptionLiveData.value = UserNotFoundException(username)
+                            }
                         }
                         .addOnFailureListener { databaseExceptionLiveData.value = it }
             }
         }
     }
 
-    private suspend fun storeCredential(context: Context) {
+    private suspend fun storeCredential(dataStore: DataStore<Preferences>) {
         withContext(Dispatchers.IO) {
-            user.value?.run { context.dataStore.edit { it[CREDENTIAL] = username } }
+            user.value?.run { dataStore.edit { it[CREDENTIAL] = username } }
         }
     }
 
-    fun login(username: String, password: String, credentialContext: Context? = null) {
+    fun login(username: String, password: String, credentialDataStore: DataStore<Preferences>? = null) {
         User.collection.document(username).get()
                 .addOnSuccessListener {
                     when {
@@ -160,12 +168,13 @@ class UserViewModel: ViewModel() {
                         -> loginResultLiveData.value = Result.failure(IncorrectPasswordException())
                         else -> it.data!!.toUser(username).fold({ user ->
                             userLiveData.value = user
-                            credentialContext?.let { context ->
+                            credentialDataStore?.let { dataStore ->
                                 viewModelScope.launch {
-                                    storeCredential(context)
+                                    storeCredential(dataStore)
                                 }
                             }
                             loginResultLiveData.value = Result.success(Unit)
+                            passwordCache = password
                         }, { e ->
                             databaseExceptionLiveData.value = e
                         })
@@ -174,7 +183,7 @@ class UserViewModel: ViewModel() {
                 .addOnFailureListener { databaseExceptionLiveData.value = it }
     }
 
-    fun signUp(user: User, password: String, credentialContext: Context? = null) {
+    fun signUp(user: User, password: String, credentialDataStore: DataStore<Preferences>? = null) {
         User.hasUser(user.username)
                 .addOnSuccessListener { userExists ->
                     when {
@@ -182,12 +191,13 @@ class UserViewModel: ViewModel() {
                         else -> User.collection.document(user.username)
                                 .set(user.toMap(password))
                                 .addOnSuccessListener {
-                                    credentialContext?.let { context ->
+                                    credentialDataStore?.let { dataStore ->
                                         viewModelScope.launch {
-                                            storeCredential(context)
+                                            storeCredential(dataStore)
                                         }
                                     }
                                     signUpResultLiveData.value = Result.success(Unit)
+                                    passwordCache = password
                                 }
                                 .addOnFailureListener { databaseExceptionLiveData.value = it }
                     }
@@ -202,5 +212,32 @@ class UserViewModel: ViewModel() {
                 dataStore.edit { it.remove(CREDENTIAL) }
             }
         }
+    }
+
+    fun refresh() {
+        user.value?.username?.let { username ->
+            User.getUser(username)
+                    .addOnSuccessListener { result ->
+                        result.fold({
+                            userLiveData.value = it
+                        }, {
+                            databaseExceptionLiveData.value = it
+                        })
+                    }
+                    .addOnFailureListener { databaseExceptionLiveData.value = it }
+        }
+    }
+
+    fun startQuiz(context: Context, quizId: String) {
+        val intent = Intent(context, QuizActivity::class.java)
+
+        intent.putExtra(QuizActivity.INTENT_QUIZ_ID, quizId)
+
+        user.value?.run {
+            intent.putExtra(QuizActivity.INTENT_USERNAME, username)
+            intent.putExtra(QuizActivity.INTENT_PASSWORD, passwordCache)
+        }
+
+        context.startActivity(intent)
     }
 }

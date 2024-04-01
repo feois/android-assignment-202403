@@ -3,6 +3,7 @@
 package com.wilson.assignment
 
 import android.content.Context
+import android.text.Editable
 import android.util.Log
 import android.widget.Toast
 import androidx.datastore.core.DataStore
@@ -33,13 +34,28 @@ fun Context.errorToast(s: String, e: Throwable) {
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
-inline fun <reified T> Map<String, *>.getProp(key: String) = when {
+typealias FirestoreMap = Map<String, *>
+
+inline fun <reified T> FirestoreMap.getProp(key: String) = when {
     !containsKey(key) -> throw PropertyNotFoundException(key)
     get(key) !is T -> throw PropertyIncompatibleTypeException(key, T::class)
     else -> get(key) as T
 }
 
-inline fun <reified T> Map<String, *>.getListProp(key: String) = getProp<List<*>>(key).filterIsInstance<T>()
+inline fun FirestoreMap.getIntProp(key: String) = getProp<Long>(key).toInt()
+
+inline fun <reified T> FirestoreMap.getListProp(key: String) = getProp<List<*>>(key).filterIsInstance<T>()
+
+fun Editable.setString(string: String) {
+    clear()
+    append(string)
+}
+fun Editable.trimWhitespaces(): String {
+    val string = toString().trimWhitespaces()
+    setString(string)
+    return string
+}
+fun String.trimWhitespaces() = this.replace("\\s+".toRegex(), " ").trimStart().trimEnd()
 
 /**
  * Hashing Utils

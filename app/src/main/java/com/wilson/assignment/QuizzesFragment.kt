@@ -1,7 +1,6 @@
 package com.wilson.assignment
 
 import android.content.Context
-import android.content.Intent
 import android.os.Bundle
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
@@ -16,32 +15,33 @@ import androidx.fragment.app.activityViewModels
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 
-class QuizViewHolder(view: View): RecyclerView.ViewHolder(view) {
-    private val root = view
-    private val title: TextView
+class QuizListAdapter(
+    private val context: Context,
+    private val quizList: List<Quiz>,
+    private val startQuizCallback: (quizId: String) -> Unit,
+): RecyclerView.Adapter<QuizListAdapter.QuizViewHolder>() {
+    inner class QuizViewHolder(view: View): RecyclerView.ViewHolder(view) {
+        private val root = view
+        private val title: TextView
 
-    init {
-        title = view.findViewById(R.id.quizName)
-    }
+        init {
+            title = view.findViewById(R.id.quizName)
+        }
 
-    fun initView(context: Context, quiz: Quiz) {
-        title.text = quiz.name
-        root.setOnClickListener {
-            val intent = Intent(context, QuizActivity::class.java)
-
-            intent.putExtra(QuizActivity.INTENT_QUIZ_ID, quiz.id)
-            context.startActivity(intent)
+        fun initView(quiz: Quiz) {
+            title.text = quiz.name
+            root.setOnClickListener {
+                startQuizCallback(quiz.id)
+            }
         }
     }
-}
 
-class QuizListAdapter(private val context: Context, private val quizList: List<Quiz>): RecyclerView.Adapter<QuizViewHolder>() {
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): QuizViewHolder {
         return QuizViewHolder(LayoutInflater.from(context).inflate(R.layout.quiz_item, parent, false))
     }
 
     override fun onBindViewHolder(holder: QuizViewHolder, position: Int) {
-        holder.initView(context, quizList[position])
+        holder.initView(quizList[position])
     }
 
     override fun getItemCount() = quizList.size
@@ -51,6 +51,7 @@ class QuizListAdapter(private val context: Context, private val quizList: List<Q
  * A simple [Fragment] subclass.
  */
 class QuizzesFragment : Fragment() {
+    private val userViewModel: UserViewModel by activityViewModels()
     private val quizViewModel: QuizViewModel by activityViewModels()
 
     private lateinit var quizList: RecyclerView
@@ -66,7 +67,7 @@ class QuizzesFragment : Fragment() {
         quizList.layoutManager = LinearLayoutManager(context)
 
         quizViewModel.quizzes.observe(viewLifecycleOwner) {
-            quizList.adapter = QuizListAdapter(requireContext(), it)
+            quizList.adapter = getAdapter(it)
         }
 
         refresh.setOnClickListener { button ->
@@ -90,7 +91,7 @@ class QuizzesFragment : Fragment() {
                     val keywords = (newText ?: "").split(" ").map { it.lowercase() }.toList()
                     val query = filter { quiz -> keywords.all { quiz.name.lowercase().contains(it) } }
 
-                    quizList.swapAdapter(QuizListAdapter(requireContext(), query), true)
+                    quizList.swapAdapter(getAdapter(query), true)
                 }
 
                 return false
@@ -98,5 +99,9 @@ class QuizzesFragment : Fragment() {
 
             override fun onQueryTextSubmit(query: String?) = false
         })
+    }
+
+    private fun getAdapter(quizzes: List<Quiz>) = QuizListAdapter(requireContext(), quizzes) {
+        userViewModel.startQuiz(requireContext(), it)
     }
 }

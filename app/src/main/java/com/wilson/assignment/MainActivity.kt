@@ -1,8 +1,10 @@
 package com.wilson.assignment
 
 import android.os.Bundle
+import androidx.activity.addCallback
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -53,7 +55,7 @@ class MainActivity : AppCompatActivity(), LogInFragment.EventListener, SignUpFra
 
         accountFragment = logInFragment
 
-        userViewModel.readCredential(this) {
+        userViewModel.readCredential(dataStore) {
             accountFragment = userProfileFragment
             refreshTabs()
         }
@@ -106,6 +108,19 @@ class MainActivity : AppCompatActivity(), LogInFragment.EventListener, SignUpFra
         }
 
         userViewModel.databaseException.observe(this) { errorToast("Database Error encountered", it) }
+
+        onBackPressedDispatcher.addCallback(this) {
+            AlertDialog.Builder(this@MainActivity)
+                    .setTitle("Exit")
+                    .setMessage("Do you want to exit the application")
+                    .setPositiveButton("Yes") { _, _ ->
+                        finish()
+                    }
+                    .setNegativeButton("No") { _, _ ->
+
+                    }
+                    .show()
+        }
     }
 
     override fun onGoToSignUp() {

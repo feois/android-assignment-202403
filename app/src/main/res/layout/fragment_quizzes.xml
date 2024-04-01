@@ -27,11 +27,13 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
+            android:backgroundTint="#FFFFFF"
             android:contentDescription="@string/refresh_quizzes"
             android:src="@android:drawable/stat_notify_sync"
             android:tooltipText="@string/refresh_quizzes"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+            app:layout_constraintTop_toTopOf="parent"
+            app:tint="#000000" />
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/quizList"

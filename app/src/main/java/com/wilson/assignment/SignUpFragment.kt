@@ -53,8 +53,8 @@ class SignUpFragment : Fragment() {
         signUpButton.setOnClickListener {
             val user = User(
                 usernameText.text.toString(),
-                firstNameText.text.toString(),
-                lastNameText.text.toString(),
+                firstNameText.text!!.trimWhitespaces(),
+                lastNameText.text!!.trimWhitespaces(),
             )
             val validation = user.validate(passwordText.text.toString())
 
@@ -64,23 +64,20 @@ class SignUpFragment : Fragment() {
             lastName.error = ""
 
             if (validation.isEmpty()) {
-                userViewModel.signUp(user, passwordText.text.toString(), context.takeIf { rememberMe.isChecked })
+                userViewModel.signUp(user, passwordText.text.toString(), requireContext().dataStore.takeIf { rememberMe.isChecked })
             }
             else {
                 var first: View? = null
 
-                for (message in validation.mapNotNull { it.message }) {
-                    User.errorType(message)?.let { errorType ->
-                        when (errorType) {
-                            User.ERR_USERNAME -> username
-                            User.ERR_PASSWORD -> password
-                            User.ERR_FIRST_NAME -> firstName
-                            User.ERR_LAST_NAME -> lastName
-                            else -> null
-                        }?.run {
-                            first = this
-                            error = message
-                        }
+                for (e in validation) {
+                    when (e) {
+                        is UsernameException -> username
+                        is PasswordException -> password
+                        is NameException -> if (e.isFirst) { firstName } else { lastName }
+                        else -> null
+                    }?.run {
+                        first = this
+                        error = e.message
                     }
                 }
 

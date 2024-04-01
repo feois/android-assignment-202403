@@ -18,5 +18,17 @@
             android:layout_height="wrap_content"
             android:text="@string/hello_blank_fragment" />
 
+        <TextView
+            android:id="@+id/marks"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="TextView" />
+
+        <TextView
+            android:id="@+id/optionsCount"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="TextView" />
+
     </LinearLayout>
 </FrameLayout>
