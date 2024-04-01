@@ -13,7 +13,7 @@ data class Quiz(val id: String, val name: String, val allowReorder: Boolean, val
         val collection get() = Firebase.firestore.collection("quizzes")
     }
 
-    val totalMarks by lazy { questions.map { it.marks }.sum() }
+    val totalMarks by lazy { questions.sumOf { it.marks } }
 
     abstract class Question {
         abstract val question: String

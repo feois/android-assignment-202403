@@ -180,9 +180,14 @@ class QuizActivity : AppCompatActivity() {
 
     private fun submit() {
         quizCache.quiz.value?.run {
-            val marks = questions.zip(resultViewModel.result.asIterable()).map {
-                if (it.second) { it.first.marks } else { 0 }
-            }.sum()
+            val marks = questions.zip(resultViewModel.result.asIterable()).sumOf {
+                if (it.second) {
+                    it.first.marks
+                }
+                else {
+                    0
+                }
+            }
 
             AlertDialog.Builder(this@QuizActivity)
                     .setTitle("Quiz completed")
