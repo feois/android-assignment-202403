@@ -20,29 +20,21 @@ class QuizListAdapter(
     private val quizList: List<Quiz>,
     private val startQuizCallback: (quizId: String) -> Unit,
 ): RecyclerView.Adapter<QuizListAdapter.QuizViewHolder>() {
-    inner class QuizViewHolder(view: View): RecyclerView.ViewHolder(view) {
-        private val root = view
-        private val title: TextView
+    inner class QuizViewHolder(private val view: View): RecyclerView.ViewHolder(view) {
+        private val title = view.findViewById<TextView>(R.id.quizName)
 
-        init {
-            title = view.findViewById(R.id.quizName)
-        }
-
-        fun initView(quiz: Quiz) {
+        fun setQuiz(quiz: Quiz) {
             title.text = quiz.name
-            root.setOnClickListener {
+            view.setOnClickListener {
                 startQuizCallback(quiz.id)
             }
         }
     }
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): QuizViewHolder {
-        return QuizViewHolder(LayoutInflater.from(context).inflate(R.layout.quiz_item, parent, false))
-    }
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int)
+        = QuizViewHolder(LayoutInflater.from(context).inflate(R.layout.quiz_item, parent, false))
 
-    override fun onBindViewHolder(holder: QuizViewHolder, position: Int) {
-        holder.initView(quizList[position])
-    }
+    override fun onBindViewHolder(holder: QuizViewHolder, position: Int) = holder.setQuiz(quizList[position])
 
     override fun getItemCount() = quizList.size
 }

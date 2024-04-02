@@ -14,13 +14,6 @@ import com.google.android.material.textfield.TextInputLayout
 class UserProfileFragment : Fragment() {
     private val userViewModel: UserViewModel by activityViewModels()
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        arguments?.let {
-
-        }
-    }
-
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,
                               savedInstanceState: Bundle?): View?
         = inflater.inflate(R.layout.fragment_user_profile, container, false)
@@ -57,10 +50,10 @@ class UserProfileFragment : Fragment() {
             }
 
             if (validation.isEmpty()) {
-                User.updateUser(userViewModel.user.value!!.username, mapOf(
+                userViewModel.updateUser(mapOf(
                     User.FIRST_NAME_FIELD to newFirstName,
                     User.LAST_NAME_FIELD to newLastName,
-                )).addOnSuccessListener { userViewModel.refresh() }
+                ))?.addOnSuccessListener { userViewModel.refresh() }
             }
             else {
                 for (e in validation) {

@@ -9,11 +9,14 @@ import android.widget.Toast
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
+import com.google.firebase.Firebase
+import com.google.firebase.firestore.firestore
 import java.security.MessageDigest
 import kotlin.reflect.KClass
 
-class PropertyNotFoundException(val propertyName: String): Exception("Property $propertyName not found")
-class PropertyIncompatibleTypeException(val propertyName: String, val type: KClass<*>): Exception("Property $propertyName is not ${type.qualifiedName}")
+abstract class PropertyException(message: String): IllegalArgumentException(message)
+class PropertyNotFoundException(val propertyName: String): PropertyException("Property $propertyName not found")
+class PropertyIncompatibleTypeException(val propertyName: String, val type: KClass<*>): PropertyException("Property $propertyName is not ${type.qualifiedName}")
 class UserNotFoundException(val username: String): Exception("User $username does not exist")
 class IncorrectPasswordException: Exception("Incorrect password")
 class UserAlreadyExistsException(val username: String): Exception("User $username already exists")
@@ -34,6 +37,7 @@ fun Context.errorToast(s: String, e: Throwable) {
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
+val db get() = Firebase.firestore
 typealias FirestoreMap = Map<String, *>
 
 inline fun <reified T> FirestoreMap.getProp(key: String) = when {

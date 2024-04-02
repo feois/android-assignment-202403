@@ -10,21 +10,32 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.firebase.Firebase
-import com.google.firebase.firestore.firestore
+import com.google.firebase.firestore.DocumentId
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlin.IllegalArgumentException
 
 fun FirestoreMap.toUser(username: String) = runCatching {
     User(
         username,
         getProp(User.FIRST_NAME_FIELD),
         getProp(User.LAST_NAME_FIELD),
-    )
+    ).apply {
+        try {
+            for (notificationId in getListProp<String>(User.READ_NOTIFICATIONS_FIELD)) {
+                readNotifications.add(notificationId)
+            }
+
+            for ((k, v) in getProp<FirestoreMap>(User.QUIZ_RESULTS_FIELD)) {
+                (v as? Int)?.let { marks ->
+                    results.put(k, marks)
+                }
+            }
+        }
+        catch (_: PropertyException) {}
+    }
 }
 
 abstract class UsernameException(message: String): IllegalArgumentException(message)
@@ -37,8 +48,11 @@ abstract class NameException(message: String, val isFirst: Boolean): IllegalArgu
 class EmptyNameException(isFirst: Boolean): NameException("Name cannot be empty", isFirst)
 class InvalidCharNameException(isFirst: Boolean): NameException("Name must only consist of only letters or space", isFirst)
 
-data class User(val username: String, val firstName: String, val lastName: String) {
+data class User(@DocumentId val username: String = "", val firstName: String, val lastName: String) {
     val fullName get() = "$firstName $lastName"
+
+    var readNotifications = mutableSetOf<String>()
+    var results = mutableMapOf<String, Int>()
 
     fun validate(password: String? = null) = buildList {
         password?.let { validatePassword(it) }?.run { add(this) }
@@ -47,26 +61,27 @@ data class User(val username: String, val firstName: String, val lastName: Strin
         validateLastName(lastName)?.run { add(this) }
     }
 
-    fun toMap(password: String? = null) = buildMap<String, Any> {
+    fun toMap(password: String? = null) = buildMap {
         password?.run { set(PASSWORD_FIELD, this) }
         set(FIRST_NAME_FIELD, firstName)
         set(LAST_NAME_FIELD, lastName)
+        set(READ_NOTIFICATIONS_FIELD, readNotifications.toList())
+        set(QUIZ_RESULTS_FIELD, results)
     }
 
     companion object {
         const val USER_COLLECTION = "users"
         const val PASSWORD_FIELD = "password"
-        const val FIRST_NAME_FIELD = "first name"
-        const val LAST_NAME_FIELD = "last name"
+        const val FIRST_NAME_FIELD = "firstName"
+        const val LAST_NAME_FIELD = "lastName"
+        const val READ_NOTIFICATIONS_FIELD = "read"
+        const val QUIZ_RESULTS_FIELD = "results"
 
         const val MIN_PASSWORD_LENGTH = 8
 
-        val db get() = Firebase.firestore
         val collection get() = db.collection(USER_COLLECTION)
 
         fun hasUser(username: String) = collection.document(username).get().continueWith { it.result.exists() }
-
-        fun updateUser(username: String, map: Map<String, Any>) = collection.document(username).update(map)
 
         fun getUser(username: String) = collection.document(username)
                     .get()
@@ -127,7 +142,21 @@ class UserViewModel: ViewModel() {
     private val databaseExceptionLiveData = MutableLiveData<Throwable>()
     val databaseException: LiveData<Throwable> get() = databaseExceptionLiveData
 
+    private val readNotifications = mutableSetOf<String>()
+
     private lateinit var passwordCache: String
+
+    fun updateUser(map: FirestoreMap? = null) = user.value?.run {
+        val userMap = toMap()
+        val combinedMap = if (map != null) { userMap + map.filterKeys {
+            when (it) {
+                User.FIRST_NAME_FIELD, User.LAST_NAME_FIELD -> true
+                else -> false
+            }
+        } } else { userMap }
+
+        User.collection.document(username).update(combinedMap)
+    }
 
     fun readCredential(dataStore: DataStore<Preferences>, successCallback: () -> Unit) {
         viewModelScope.launch(Dispatchers.IO) {
@@ -184,18 +213,21 @@ class UserViewModel: ViewModel() {
     }
 
     fun signUp(user: User, password: String, credentialDataStore: DataStore<Preferences>? = null) {
+        user.readNotifications = readNotifications
+
         User.hasUser(user.username)
                 .addOnSuccessListener { userExists ->
                     when {
                         userExists -> signUpResultLiveData.value = Result.failure(UserAlreadyExistsException(user.username))
                         else -> User.collection.document(user.username)
-                                .set(user.toMap(password))
+                                .set(user.toMap(HashUtils.sha256(password)))
                                 .addOnSuccessListener {
                                     credentialDataStore?.let { dataStore ->
                                         viewModelScope.launch {
                                             storeCredential(dataStore)
                                         }
                                     }
+                                    userLiveData.value = user
                                     signUpResultLiveData.value = Result.success(Unit)
                                     passwordCache = password
                                 }
@@ -207,6 +239,7 @@ class UserViewModel: ViewModel() {
 
     fun logout(credentialContext: Context? = null) {
         userLiveData.value = null
+        readNotifications.clear()
         credentialContext?.apply {
             viewModelScope.launch {
                 dataStore.edit { it.remove(CREDENTIAL) }
@@ -240,4 +273,11 @@ class UserViewModel: ViewModel() {
 
         context.startActivity(intent)
     }
+
+    fun readNotification(id: String) {
+        (user.value?.readNotifications ?: readNotifications).add(id)
+        user.value?.run { updateUser() }
+    }
+
+    fun hasRead(id: String) = (user.value?.readNotifications ?: readNotifications).contains(id)
 }

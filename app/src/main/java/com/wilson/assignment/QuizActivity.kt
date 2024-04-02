@@ -1,5 +1,6 @@
 package com.wilson.assignment
 
+import android.content.Intent
 import android.os.Bundle
 import android.widget.Button
 import android.widget.ImageButton
@@ -32,7 +33,6 @@ class QuizCacheViewModel: ViewModel() {
 
 class QuizActivity : AppCompatActivity() {
     private val userViewModel: UserViewModel by viewModels()
-    private val quizViewModel: QuizViewModel by viewModels()
     private val quizCache: QuizCacheViewModel by viewModels()
     private val resultViewModel: ResultViewModel by viewModels()
 
@@ -74,7 +74,7 @@ class QuizActivity : AppCompatActivity() {
             errorToast("Quiz Activity", IllegalArgumentException("No quiz id provided"))
         }
         else {
-            quizViewModel.getQuiz(quizId).addOnCompleteListener {
+            Quiz.getQuiz(quizId).addOnCompleteListener {
                 (it.exception ?: it.result?.exceptionOrNull())?.run {
                     errorToast("Failed to retrieve quiz $quizId", this)
                 }
@@ -179,23 +179,13 @@ class QuizActivity : AppCompatActivity() {
     }
 
     private fun submit() {
-        quizCache.quiz.value?.run {
-            val marks = questions.zip(resultViewModel.result.asIterable()).sumOf {
-                if (it.second) {
-                    it.first.marks
-                }
-                else {
-                    0
-                }
-            }
+        val intent = Intent(this, ResultActivity::class.java)
 
-            AlertDialog.Builder(this@QuizActivity)
-                    .setTitle("Quiz completed")
-                    .setMessage("Total marks: $marks/$totalMarks")
-                    .setOnDismissListener {
-                        finish()
-                    }
-                    .show()
-        }
+        intent.putExtra(ResultActivity.INTENT_USERNAME, userViewModel.user.value?.username)
+        intent.putExtra(ResultActivity.INTENT_QUID_ID, quizCache.quiz.value?.id)
+        intent.putExtra(ResultActivity.INTENT_RESULT, resultViewModel.result)
+
+        startActivity(intent)
+        finish()
     }
 }

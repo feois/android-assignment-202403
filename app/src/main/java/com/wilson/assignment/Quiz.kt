@@ -4,13 +4,20 @@ import android.text.InputType
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import com.google.firebase.Firebase
-import com.google.firebase.firestore.firestore
 import java.lang.IllegalArgumentException
 
 data class Quiz(val id: String, val name: String, val allowReorder: Boolean, val questions: List<Question>) {
     companion object {
-        val collection get() = Firebase.firestore.collection("quizzes")
+        val collection get() = db.collection("quizzes")
+
+        fun getQuiz(id: String) = collection.document(id).get().continueWith {
+            it.runCatching {
+                require(isSuccessful) { "Failed to retrieve quiz $id" }
+                require(result.exists()) { "Quiz $id does not exist" }
+
+                result.data!!.toQuiz(id).getOrThrow()
+            }
+        }
     }
 
     val totalMarks by lazy { questions.sumOf { it.marks } }
@@ -97,15 +104,6 @@ fun FirestoreMap.toQuiz(id: String) = runCatching {
 class QuizViewModel: ViewModel() {
     private val quizzesLiveData = MutableLiveData<List<Quiz>>()
     val quizzes: LiveData<List<Quiz>> get() = quizzesLiveData
-
-    fun getQuiz(id: String) = Quiz.collection.document(id).get().continueWith {
-        it.runCatching {
-            require(isSuccessful) { "Failed to retrieve quiz $id" }
-            require(result.exists()) { "Quiz $id does not exist" }
-
-            result.data!!.toQuiz(id).getOrThrow()
-        }
-    }
 
     fun updateQuizzes() = Quiz.collection.get().continueWith { task ->
         task.runCatching {
