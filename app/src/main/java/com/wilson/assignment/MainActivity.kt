@@ -10,6 +10,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
+import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import androidx.viewpager2.widget.ViewPager2
 import com.google.android.material.bottomnavigation.BottomNavigationView
@@ -113,12 +114,8 @@ class MainActivity : AppCompatActivity(), LogInFragment.EventListener, SignUpFra
             AlertDialog.Builder(this@MainActivity)
                     .setTitle("Exit")
                     .setMessage("Do you want to exit the application")
-                    .setPositiveButton("Yes") { _, _ ->
-                        finish()
-                    }
-                    .setNegativeButton("No") { _, _ ->
-
-                    }
+                    .setPositiveButton("Yes") { _, _ -> finish() }
+                    .setNegativeButton("No") { _, _ -> }
                     .show()
         }
     }

@@ -153,7 +153,7 @@ class QuestionFragment : Fragment() {
                         }
                         else if (hint && checkedCount == answers.size) {
                             buttonView.isChecked = false
-                            context?.shortToast("You cannot choose more than ${options.size}")
+                            context?.shortToast("You cannot choose more than ${answers.size}")
                         }
                         else {
                             checked.add(checkIndex)

@@ -8,13 +8,46 @@ import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore.*
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.view.animation.Animation
+import android.view.animation.RotateAnimation
 import android.widget.ImageButton
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import java.io.OutputStream
+
+class QuestionViewHolder(val view: View): RecyclerView.ViewHolder(view) {
+    private val expand = view.findViewById<ImageView>(R.id.questionItemExpand)
+    private val questionText = view.findViewById<TextView>(R.id.questionItemQuestion)
+    private val status = view.findViewById<TextView>(R.id.questionItemStatus)
+
+    fun initQuestion(question: Quiz.Question, result: Boolean) {
+        questionText.text = question.question
+
+        if (result) {
+            view.setBackgroundColor(0x2600FF00)
+            status.text = "✅"
+        }
+        else {
+            view.setBackgroundColor(0x26FF0000)
+            status.text = "❌"
+        }
+
+        view.setOnClickListener {
+//            expand.startAnimation(RotateAnimation(0f, 180f,
+//                Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 0.5f)
+//                    .apply { duration = 500 })
+        }
+    }
+}
 
 class ResultActivity : AppCompatActivity() {
     companion object {
@@ -42,33 +75,55 @@ class ResultActivity : AppCompatActivity() {
             require(result != null) { "No quiz result provided" }
 
             quiz.addOnSuccessListener { r ->
-                r.fold({ quiz ->
-                    val marks = quiz.calculateMarks(result)
-
-                    findViewById<TextView>(R.id.textView).text = "Marks: $marks/${quiz.totalMarks}"
-
-                    findViewById<ImageButton>(R.id.share).setOnClickListener {
-                        val bitmap = it.rootView.run {
-                            Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888).apply {
-                                draw(Canvas(this))
-                            }
-                        }
-                        val uri = saveImage(bitmap)
-
-                        if (uri != null) {
-                            startActivity(Intent(Intent.ACTION_SEND).apply {
-                                type = "image/*"
-                                putExtra(Intent.EXTRA_SUBJECT, "Quiz ${quiz.name} result")
-                                putExtra(Intent.EXTRA_TEXT, "I have completed quiz ${quiz.name}!")
-                                putExtra(Intent.EXTRA_STREAM, uri)
-                            })
-                        }
-                    }
+                r.fold({
+                    initQuiz(it, result)
                 }) {
                     errorToast("Cannot retrieve quiz", it)
                 }
             }
         }.exceptionOrNull()?.run { errorToast("", this) }
+
+        findViewById<ImageButton>(R.id.closeResult).setOnClickListener {
+            finish()
+        }
+    }
+
+    private fun initQuiz(quiz: Quiz, result: BooleanArray) {
+        val marks = quiz.calculateMarks(result)
+
+        findViewById<TextView>(R.id.textView).text = "Marks: $marks/${quiz.totalMarks}"
+
+        findViewById<ImageButton>(R.id.share).setOnClickListener {
+            val bitmap = it.rootView.run {
+                Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888).apply {
+                    draw(Canvas(this))
+                }
+            }
+            val uri = saveImage(bitmap)
+
+            if (uri != null) {
+                startActivity(Intent(Intent.ACTION_SEND).apply {
+                    type = "image/*"
+                    putExtra(Intent.EXTRA_SUBJECT, "Quiz ${quiz.name} result")
+                    putExtra(Intent.EXTRA_TEXT, "I have completed quiz ${quiz.name}!")
+                    putExtra(Intent.EXTRA_STREAM, uri)
+                })
+            }
+        }
+
+        val recycler = findViewById<RecyclerView>(R.id.questionList)
+
+        recycler.layoutManager = LinearLayoutManager(this)
+        recycler.adapter = object: RecyclerView.Adapter<QuestionViewHolder>() {
+            override fun getItemCount() = quiz.questions.size
+
+            override fun onBindViewHolder(holder: QuestionViewHolder, position: Int)
+                = holder.initQuestion(quiz.questions[position], result[position])
+
+            override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) = QuestionViewHolder(
+                LayoutInflater.from(this@ResultActivity).inflate(R.layout.question_item, parent, false)
+            )
+        }
     }
 
     // https://stackoverflow.com/a/66817176

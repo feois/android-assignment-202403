@@ -55,7 +55,6 @@ class QuizListAdapter(
             .apply {
                 userViewModel.user.observe(lifecycleOwner) {
                     quiz?.run {
-                        logInfo("$id ${it?.results}")
                         setStatus(it?.results?.get(id))
                     }
                 }
@@ -96,6 +95,9 @@ class QuizzesFragment : Fragment() {
         quizViewModel.quizzes.observe(viewLifecycleOwner) {
             quizList.adapter = getAdapter(it)
         }
+
+        view.findViewById<TextView>(R.id.warnLogin).visibility =
+            if (userViewModel.user.value == null) { View.VISIBLE } else { View.GONE }
 
         refresh.setOnClickListener { button ->
             button.animation = RotateAnimation(0f, 360f,
