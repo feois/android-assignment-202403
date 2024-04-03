@@ -30,8 +30,20 @@
             android:ellipsize="end"
             android:gravity="center_vertical"
             android:maxLines="1"
-            app:layout_constraintEnd_toStartOf="@+id/questionItemStatus"
+            app:layout_constraintEnd_toStartOf="@+id/questionItemMarks"
             app:layout_constraintStart_toEndOf="@+id/questionItemExpand"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <TextView
+            android:id="@+id/questionItemMarks"
+            android:layout_width="wrap_content"
+            android:layout_height="0dp"
+            android:layout_marginEnd="8dp"
+            android:gravity="center"
+            android:textColor="#00FF00"
+            android:textSize="16sp"
+            app:layout_constraintBottom_toBottomOf="@+id/questionItemQuestion"
+            app:layout_constraintEnd_toStartOf="@+id/questionItemStatus"
             app:layout_constraintTop_toTopOf="parent" />
 
         <TextView

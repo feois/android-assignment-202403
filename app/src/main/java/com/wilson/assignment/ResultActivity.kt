@@ -27,6 +27,7 @@ import java.io.OutputStream
 class QuestionViewHolder(val view: View): RecyclerView.ViewHolder(view) {
     private val expand = view.findViewById<ImageView>(R.id.questionItemExpand)
     private val questionText = view.findViewById<TextView>(R.id.questionItemQuestion)
+    private val marks = view.findViewById<TextView>(R.id.questionItemMarks)
     private val status = view.findViewById<TextView>(R.id.questionItemStatus)
     private val drawer = view.findViewById<View>(R.id.questionItemDrawer)
     private val full = view.findViewById<TextView>(R.id.questionItemFull)
@@ -36,8 +37,7 @@ class QuestionViewHolder(val view: View): RecyclerView.ViewHolder(view) {
         val answer = when (question) {
             is Quiz.SubjectiveQuestion -> question.answer
             is Quiz.UniselectionalObjectiveQuestion -> question.options[question.answer]
-            is Quiz.MultiselectionalObjectiveQuestion -> question.answers.map { "- " + question.options[it] }
-                    .joinToString("\n")
+            is Quiz.MultiselectionalObjectiveQuestion -> question.answers.joinToString("\n") { "•\t" + question.options[it] }
             else -> null
         }
 
@@ -47,6 +47,7 @@ class QuestionViewHolder(val view: View): RecyclerView.ViewHolder(view) {
 
         if (result) {
             view.setBackgroundColor(0x2600FF00)
+            marks.text = "+${question.marks}"
             status.text = "✅"
         }
         else {
@@ -112,18 +113,34 @@ class ResultActivity : AppCompatActivity() {
                 }) {
                     errorToast("Cannot retrieve quiz", it)
                 }
-            }
+            }.addOnFailureListener { errorToast("Cannot retrieve quiz", it) }
         }.exceptionOrNull()?.run { errorToast("", this) }
+
+        user?.addOnSuccessListener {  r ->
+            r.fold({
+                initUser(it)
+            }) {
+                errorToast("Cannot retrieve user", it)
+            }
+        }?.addOnFailureListener { errorToast("Cannot retrieve user", it) }
 
         findViewById<ImageButton>(R.id.closeResult).setOnClickListener {
             finish()
         }
     }
 
+    private fun initUser(user: User) {
+        findViewById<TextView>(R.id.textView2).text = "Completed by ${user.fullName} <${user.username}>"
+    }
+
     private fun initQuiz(quiz: Quiz, result: BooleanArray) {
         val marks = quiz.calculateMarks(result)
 
-        findViewById<TextView>(R.id.textView).text = "Marks: $marks/${quiz.totalMarks}"
+        findViewById<TextView>(R.id.textView).text = """
+            ${quiz.name}
+            
+            Marks: $marks/${quiz.totalMarks}
+        """.trimIndent()
 
         findViewById<ImageButton>(R.id.share).setOnClickListener {
             val bitmap = it.rootView.run {
