@@ -28,9 +28,22 @@ class QuestionViewHolder(val view: View): RecyclerView.ViewHolder(view) {
     private val expand = view.findViewById<ImageView>(R.id.questionItemExpand)
     private val questionText = view.findViewById<TextView>(R.id.questionItemQuestion)
     private val status = view.findViewById<TextView>(R.id.questionItemStatus)
+    private val drawer = view.findViewById<View>(R.id.questionItemDrawer)
+    private val full = view.findViewById<TextView>(R.id.questionItemFull)
+    private val answerText = view.findViewById<TextView>(R.id.questionItemAnswer)
 
     fun initQuestion(question: Quiz.Question, result: Boolean) {
+        val answer = when (question) {
+            is Quiz.SubjectiveQuestion -> question.answer
+            is Quiz.UniselectionalObjectiveQuestion -> question.options[question.answer]
+            is Quiz.MultiselectionalObjectiveQuestion -> question.answers.map { "- " + question.options[it] }
+                    .joinToString("\n")
+            else -> null
+        }
+
         questionText.text = question.question
+        full.text = question.question
+        answer?.let { answerText.text = "Answer:\n$it" }
 
         if (result) {
             view.setBackgroundColor(0x2600FF00)
@@ -42,9 +55,28 @@ class QuestionViewHolder(val view: View): RecyclerView.ViewHolder(view) {
         }
 
         view.setOnClickListener {
-//            expand.startAnimation(RotateAnimation(0f, 180f,
-//                Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 0.5f)
-//                    .apply { duration = 500 })
+            expand.startAnimation(RotateAnimation(0f, 180f,
+                Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 0.5f)
+                    .apply {
+                        duration = 100
+
+                        setAnimationListener(object: Animation.AnimationListener {
+                            override fun onAnimationEnd(animation: Animation?) {
+                                expand.scaleY *= -1
+
+                                if (expand.scaleY > 0) {
+                                    questionText.visibility = View.VISIBLE
+                                    drawer.visibility = View.GONE
+                                }
+                                else {
+                                    questionText.visibility = View.INVISIBLE
+                                    drawer.visibility = View.VISIBLE
+                                }
+                            }
+                            override fun onAnimationRepeat(animation: Animation?) {}
+                            override fun onAnimationStart(animation: Animation?) {}
+                        })
+                    })
         }
     }
 }
