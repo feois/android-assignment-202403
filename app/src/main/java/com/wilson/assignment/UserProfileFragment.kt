@@ -53,7 +53,7 @@ class UserProfileFragment : Fragment() {
                 userViewModel.updateUser(mapOf(
                     User.FIRST_NAME_FIELD to newFirstName,
                     User.LAST_NAME_FIELD to newLastName,
-                ))?.addOnSuccessListener { userViewModel.refresh() }
+                ))
             }
             else {
                 for (e in validation) {

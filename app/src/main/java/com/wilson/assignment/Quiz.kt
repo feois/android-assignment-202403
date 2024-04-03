@@ -22,6 +22,10 @@ data class Quiz(val id: String, val name: String, val allowReorder: Boolean, val
 
     val totalMarks by lazy { questions.sumOf { it.marks } }
 
+    fun calculateMarks(result: BooleanArray) = questions.zip(result.asIterable()).sumOf {
+        if (it.second) { it.first.marks } else { 0 }
+    }
+
     abstract class Question {
         abstract val question: String
         abstract val marks: Int

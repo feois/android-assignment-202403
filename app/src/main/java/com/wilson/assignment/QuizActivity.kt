@@ -179,13 +179,21 @@ class QuizActivity : AppCompatActivity() {
     }
 
     private fun submit() {
-        val intent = Intent(this, ResultActivity::class.java)
+        quizCache.quiz.value?.run {
+            val marks = calculateMarks(resultViewModel.result)
+            val intent = Intent(this@QuizActivity, ResultActivity::class.java)
 
-        intent.putExtra(ResultActivity.INTENT_USERNAME, userViewModel.user.value?.username)
-        intent.putExtra(ResultActivity.INTENT_QUID_ID, quizCache.quiz.value?.id)
-        intent.putExtra(ResultActivity.INTENT_RESULT, resultViewModel.result)
+            userViewModel.user.value?.apply {
+                results.put(id, marks)
+                userViewModel.updateUser()
+                intent.putExtra(ResultActivity.INTENT_USERNAME, username)
+            }
 
-        startActivity(intent)
-        finish()
+            intent.putExtra(ResultActivity.INTENT_QUID_ID, id)
+            intent.putExtra(ResultActivity.INTENT_RESULT, resultViewModel.result)
+
+            startActivity(intent)
+            finish()
+        }
     }
 }

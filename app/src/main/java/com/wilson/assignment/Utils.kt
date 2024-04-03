@@ -50,6 +50,10 @@ inline fun FirestoreMap.getIntProp(key: String) = getProp<Long>(key).toInt()
 
 inline fun <reified T> FirestoreMap.getListProp(key: String) = getProp<List<*>>(key).filterIsInstance<T>()
 
+inline fun <reified T> FirestoreMap.convertTo() = filterValues { it is T }.mapValues { it.value as T }
+
+inline fun FirestoreMap.convertToInt() = filterValues { it is Long }.mapValues { (it.value as Long).toInt() }
+
 fun Editable.setString(string: String) {
     clear()
     append(string)

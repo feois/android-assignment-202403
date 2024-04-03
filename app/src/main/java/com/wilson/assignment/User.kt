@@ -11,6 +11,7 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.firestore.DocumentId
+import com.google.firebase.firestore.ListenerRegistration
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -24,15 +25,8 @@ fun FirestoreMap.toUser(username: String) = runCatching {
         getProp(User.LAST_NAME_FIELD),
     ).apply {
         try {
-            for (notificationId in getListProp<String>(User.READ_NOTIFICATIONS_FIELD)) {
-                readNotifications.add(notificationId)
-            }
-
-            for ((k, v) in getProp<FirestoreMap>(User.QUIZ_RESULTS_FIELD)) {
-                (v as? Int)?.let { marks ->
-                    results.put(k, marks)
-                }
-            }
+            readNotifications = getListProp<String>(User.READ_NOTIFICATIONS_FIELD).toMutableSet()
+            results = getProp<FirestoreMap>(User.QUIZ_RESULTS_FIELD).convertToInt().toMutableMap()
         }
         catch (_: PropertyException) {}
     }
@@ -128,7 +122,10 @@ data class User(@DocumentId val username: String = "", val firstName: String, va
 
 
 class UserViewModel: ViewModel() {
-    private val CREDENTIAL = stringPreferencesKey("credential")
+    companion object {
+        private val CREDENTIAL_USERNAME = stringPreferencesKey("credential_user")
+        private val CREDENTIAL_PASSWORD = stringPreferencesKey("credential_password")
+    }
 
     private val userLiveData = MutableLiveData<User?>()
     val user: LiveData<User?> get() = userLiveData
@@ -145,6 +142,32 @@ class UserViewModel: ViewModel() {
     private val readNotifications = mutableSetOf<String>()
 
     private lateinit var passwordCache: String
+    private var updateListener: ListenerRegistration? = null
+    private var userBefore: String? = null
+
+    var subscribeUpdate = true
+
+    init {
+        user.observeForever { newUser ->
+            val username = newUser?.username
+
+            if (subscribeUpdate && username != userBefore) {
+                userBefore = username
+                updateListener?.remove()
+
+                if (username != null) {
+                    updateListener = User.collection.document(username).addSnapshotListener { value, error ->
+                        value?.data?.toUser(username)?.fold({
+                            userLiveData.value = it
+                        }) {
+                            databaseExceptionLiveData.value = it
+                        }
+                        error?.let { databaseExceptionLiveData.value = it }
+                    }
+                }
+            }
+        }
+    }
 
     fun updateUser(map: FirestoreMap? = null) = user.value?.run {
         val userMap = toMap()
@@ -160,12 +183,14 @@ class UserViewModel: ViewModel() {
 
     fun readCredential(dataStore: DataStore<Preferences>, successCallback: () -> Unit) {
         viewModelScope.launch(Dispatchers.IO) {
-            dataStore.data.map { it[CREDENTIAL] }.first()?.let { username ->
+            val username = dataStore.data.map { it[CREDENTIAL_USERNAME] }.first()
+            val password = dataStore.data.map { it[CREDENTIAL_PASSWORD] }.first()
+
+            if (username != null && password != null) {
                 User.collection.document(username).get()
                         .addOnSuccessListener {
                             if (it.exists()) {
                                 it.data!!.runCatching {
-                                    val password = getProp<String>(User.PASSWORD_FIELD)
                                     val user = toUser(username).getOrThrow()
 
                                     userLiveData.value = user
@@ -182,9 +207,10 @@ class UserViewModel: ViewModel() {
         }
     }
 
-    private suspend fun storeCredential(dataStore: DataStore<Preferences>) {
+    private suspend fun storeCredential(dataStore: DataStore<Preferences>, username: String, password: String) {
         withContext(Dispatchers.IO) {
-            user.value?.run { dataStore.edit { it[CREDENTIAL] = username } }
+            dataStore.edit { it[CREDENTIAL_USERNAME] = username }
+            dataStore.edit { it[CREDENTIAL_PASSWORD] = password }
         }
     }
 
@@ -199,14 +225,14 @@ class UserViewModel: ViewModel() {
                             userLiveData.value = user
                             credentialDataStore?.let { dataStore ->
                                 viewModelScope.launch {
-                                    storeCredential(dataStore)
+                                    storeCredential(dataStore, username, password)
                                 }
                             }
                             loginResultLiveData.value = Result.success(Unit)
                             passwordCache = password
-                        }, { e ->
+                        }) { e ->
                             databaseExceptionLiveData.value = e
-                        })
+                        }
                     }
                 }
                 .addOnFailureListener { databaseExceptionLiveData.value = it }
@@ -224,7 +250,7 @@ class UserViewModel: ViewModel() {
                                 .addOnSuccessListener {
                                     credentialDataStore?.let { dataStore ->
                                         viewModelScope.launch {
-                                            storeCredential(dataStore)
+                                            storeCredential(dataStore, user.username, password)
                                         }
                                     }
                                     userLiveData.value = user
@@ -242,7 +268,7 @@ class UserViewModel: ViewModel() {
         readNotifications.clear()
         credentialContext?.apply {
             viewModelScope.launch {
-                dataStore.edit { it.remove(CREDENTIAL) }
+                dataStore.edit { it.remove(CREDENTIAL_USERNAME) }
             }
         }
     }
@@ -253,9 +279,9 @@ class UserViewModel: ViewModel() {
                     .addOnSuccessListener { result ->
                         result.fold({
                             userLiveData.value = it
-                        }, {
+                        }) {
                             databaseExceptionLiveData.value = it
-                        })
+                        }
                     }
                     .addOnFailureListener { databaseExceptionLiveData.value = it }
         }

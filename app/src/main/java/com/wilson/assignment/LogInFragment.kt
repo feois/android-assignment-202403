@@ -44,8 +44,6 @@ class LogInFragment : Fragment() {
             username.error = ""
             password.error = ""
 
-            logInfo("click")
-
             if (validation.isEmpty()) {
                 userViewModel.login(
                     usernameText.text.toString(),

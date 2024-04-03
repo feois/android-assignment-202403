@@ -43,8 +43,7 @@ class ResultActivity : AppCompatActivity() {
 
             quiz.addOnSuccessListener { r ->
                 r.fold({ quiz ->
-                    val marks  = quiz.questions.zip(result.asIterable())
-                            .sumOf { if (it.second) { it.first.marks } else { 0 } }
+                    val marks = quiz.calculateMarks(result)
 
                     findViewById<TextView>(R.id.textView).text = "Marks: $marks/${quiz.totalMarks}"
 
@@ -65,15 +64,15 @@ class ResultActivity : AppCompatActivity() {
                             })
                         }
                     }
-                }, {
+                }) {
                     errorToast("Cannot retrieve quiz", it)
-                })
+                }
             }
         }.exceptionOrNull()?.run { errorToast("", this) }
     }
 
     // https://stackoverflow.com/a/66817176
-    fun saveImage(bitmap: Bitmap): Uri? {
+    private fun saveImage(bitmap: Bitmap): Uri? {
         val filename = "IMG_${System.currentTimeMillis()}.jpg"
         var fos: OutputStream?
         val imageUri: Uri?

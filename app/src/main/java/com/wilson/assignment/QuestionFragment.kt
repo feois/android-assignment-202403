@@ -175,7 +175,6 @@ class QuestionFragment : Fragment() {
 
                 blankCallback = { hint && checked.size != answers.size }
                 resultCallback = {
-                    logInfo("${answers.joinToString(",")} ${checked.joinToString(",")}")
                     answers.size == checked.size && answers.all { checked.contains(it) } }
             }
 

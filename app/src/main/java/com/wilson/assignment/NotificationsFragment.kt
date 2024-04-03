@@ -1,6 +1,5 @@
 package com.wilson.assignment
 
-import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -10,26 +9,31 @@ import android.view.ViewGroup
 import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.LifecycleOwner
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.firebase.firestore.toObject
 
 class NotificationsAdapter(private val context: Context,
                            private val notifications: List<Notification>,
-                           private val readCallback: (Notification) -> Unit,
-                           private val hasReadCallback: (Notification) -> Boolean,)
+                           private val lifecycleOwner: LifecycleOwner,
+                           private val userViewModel: UserViewModel,
+                           private val readCallback: (Notification) -> Unit)
     : RecyclerView.Adapter<NotificationsAdapter.NotificationViewHolder>() {
     inner class NotificationViewHolder(private val view: View): RecyclerView.ViewHolder(view) {
+        var notification: Notification? = null; private set
+
         private val titleText = view.findViewById<TextView>(R.id.notificationTitle)
         private val timeText = view.findViewById<TextView>(R.id.notificationTime)
         
-        fun setNotification(notification: Notification) {
-            titleText.text = notification.title
-            setRead(hasReadCallback(notification))
-            timeText.text = notification.formatTime()
+        fun setNotification(n: Notification) {
+            notification = n
+
+            titleText.text = n.title
+            timeText.text = n.formatTime()
 
             view.setOnClickListener {
-                readCallback(notification)
+                readCallback(n)
                 setRead(true)
             }
         }
@@ -39,11 +43,18 @@ class NotificationsAdapter(private val context: Context,
         }
     }
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int)
-        = NotificationViewHolder(LayoutInflater.from(context).inflate(R.layout.notification_item, parent, false))
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) = NotificationViewHolder(LayoutInflater.from(context)
+            .inflate(R.layout.notification_item, parent, false))
+            .apply {
+                userViewModel.user.observe(lifecycleOwner) {
+                    notification?.id?.run { setRead(userViewModel.hasRead(this)) }
+                }
+            }
 
-    override fun onBindViewHolder(holder: NotificationViewHolder, position: Int)
-        = holder.setNotification(notifications[position])
+    override fun onBindViewHolder(holder: NotificationViewHolder, position: Int) = holder.run {
+        setNotification(notifications[position])
+        setRead(userViewModel.hasRead(notifications[position].id))
+    }
 
     override fun getItemCount() = notifications.size
 }
@@ -54,7 +65,6 @@ class NotificationsFragment : Fragment() {
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View?
         = inflater.inflate(R.layout.fragment_notifications, container, false)
 
-    @SuppressLint("NotifyDataSetChanged")
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         val recycler = view.findViewById<RecyclerView>(R.id.notifications)
 
@@ -70,18 +80,12 @@ class NotificationsFragment : Fragment() {
             recycler.swapAdapter(getAdapter(value!!.mapNotNull { it.toObject<Notification>() }
                     .sortedByDescending { it.time }), true)
         }
-
-        userViewModel.user.observe(viewLifecycleOwner) {
-            recycler.adapter?.notifyDataSetChanged()
-        }
     }
 
-    fun getAdapter(list: List<Notification>) = NotificationsAdapter(requireContext(), list,
-        {
-            startActivity(Intent(requireContext(), NotificationActivity::class.java).apply {
-                putExtra(NotificationActivity.INTENT_NOTIFICATION_ID, it.id)
-            })
-            userViewModel.readNotification(it.id)
-        },
-        { userViewModel.hasRead(it.id) },)
+    private fun getAdapter(list: List<Notification>) = NotificationsAdapter(requireContext(), list, viewLifecycleOwner, userViewModel) {
+        startActivity(Intent(requireContext(), NotificationActivity::class.java).apply {
+            putExtra(NotificationActivity.INTENT_NOTIFICATION_ID, it.id)
+        })
+        userViewModel.readNotification(it.id)
+    }
 }

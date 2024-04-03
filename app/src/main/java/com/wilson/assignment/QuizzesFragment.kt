@@ -9,32 +9,67 @@ import android.view.ViewGroup
 import android.view.animation.Animation
 import android.view.animation.RotateAnimation
 import android.widget.ImageButton
+import android.widget.ImageView
 import android.widget.SearchView
 import android.widget.TextView
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.LifecycleOwner
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 
 class QuizListAdapter(
     private val context: Context,
     private val quizList: List<Quiz>,
-    private val startQuizCallback: (quizId: String) -> Unit,
+    private val lifecycleOwner: LifecycleOwner,
+    private val userViewModel: UserViewModel,
 ): RecyclerView.Adapter<QuizListAdapter.QuizViewHolder>() {
     inner class QuizViewHolder(private val view: View): RecyclerView.ViewHolder(view) {
-        private val title = view.findViewById<TextView>(R.id.quizName)
+        var quiz: Quiz? = null; private set
 
-        fun setQuiz(quiz: Quiz) {
-            title.text = quiz.name
+        private val star = view.findViewById<ImageView>(R.id.quizStar)
+        private val title = view.findViewById<TextView>(R.id.quizName)
+        private val status = view.findViewById<TextView>(R.id.quizStatus)
+
+        fun setQuiz(q: Quiz, callback: () -> Unit) {
+            quiz = q
+            title.text = q.name
             view.setOnClickListener {
-                startQuizCallback(quiz.id)
+                callback()
+            }
+        }
+
+        fun setStatus(marks: Int?) {
+            if (marks == null) {
+                star.setImageResource(android.R.drawable.btn_star_big_off)
+                status.text = "Uncompleted"
+            }
+            else {
+                star.setImageResource(android.R.drawable.btn_star_big_on)
+                status.text = "Completed: $marks/${quiz?.totalMarks}"
             }
         }
     }
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int)
-        = QuizViewHolder(LayoutInflater.from(context).inflate(R.layout.quiz_item, parent, false))
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) = QuizViewHolder(LayoutInflater.from(context)
+            .inflate(R.layout.quiz_item, parent, false))
+            .apply {
+                userViewModel.user.observe(lifecycleOwner) {
+                    quiz?.run {
+                        logInfo("$id ${it?.results}")
+                        setStatus(it?.results?.get(id))
+                    }
+                }
+            }
 
-    override fun onBindViewHolder(holder: QuizViewHolder, position: Int) = holder.setQuiz(quizList[position])
+    override fun onBindViewHolder(holder: QuizViewHolder, position: Int) = holder.run {
+        val quiz = quizList[position]
+
+        setQuiz(quiz) {
+            userViewModel.startQuiz(context, quiz.id)
+        }
+
+        setStatus(userViewModel.user.value?.results?.get(quiz.id))
+    }
 
     override fun getItemCount() = quizList.size
 }
@@ -93,7 +128,5 @@ class QuizzesFragment : Fragment() {
         })
     }
 
-    private fun getAdapter(quizzes: List<Quiz>) = QuizListAdapter(requireContext(), quizzes) {
-        userViewModel.startQuiz(requireContext(), it)
-    }
+    private fun getAdapter(quizzes: List<Quiz>) = QuizListAdapter(requireContext(), quizzes, viewLifecycleOwner, userViewModel)
 }
