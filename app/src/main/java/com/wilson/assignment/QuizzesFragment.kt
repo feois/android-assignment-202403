@@ -18,6 +18,7 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 
+
 class QuizListAdapter(
     private val context: Context,
     private val quizList: List<Quiz>,
@@ -29,7 +30,9 @@ class QuizListAdapter(
 
         private val star = view.findViewById<ImageView>(R.id.quizStar)
         private val title = view.findViewById<TextView>(R.id.quizName)
-        private val status = view.findViewById<TextView>(R.id.quizStatus)
+        private val statusText = view.findViewById<TextView>(R.id.quizStatusText)
+        private val status = view.findViewById<ProgressBar>(R.id.quizStatus)
+        private val statusPercentage = view.findViewById<TextView>(R.id.quizStatusPercentage)
 
         fun setQuiz(q: Quiz, callback: () -> Unit) {
             quiz = q
@@ -40,13 +43,22 @@ class QuizListAdapter(
         }
 
         fun setStatus(marks: Int?) {
+            val total = quiz?.totalMarks
+
             if (marks == null) {
                 star.setImageResource(android.R.drawable.btn_star_big_off)
-                status.text = "Uncompleted"
+                statusText.text = "Uncompleted"
+                status.visibility = View.INVISIBLE
+                statusPercentage.visibility = View.INVISIBLE
             }
-            else {
+            else if (total != null) {
                 star.setImageResource(android.R.drawable.btn_star_big_on)
-                status.text = "Completed: $marks/${quiz?.totalMarks}"
+                statusText.text = "Completed: $marks/${total}"
+
+                context.markProgress(marks, total, status, statusPercentage)
+
+                status.visibility = View.VISIBLE
+                statusPercentage.visibility = View.VISIBLE
             }
         }
     }

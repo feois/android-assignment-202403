@@ -5,7 +5,10 @@ package com.wilson.assignment
 import android.content.Context
 import android.text.Editable
 import android.util.Log
+import android.widget.ProgressBar
+import android.widget.TextView
 import android.widget.Toast
+import androidx.core.content.ContextCompat
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
@@ -64,6 +67,25 @@ fun Editable.trimWhitespaces(): String {
     return string
 }
 fun String.trimWhitespaces() = this.replace("\\s+".toRegex(), " ").trimStart().trimEnd()
+
+fun Context.markProgress(marks: Int, total: Int, progressBar: ProgressBar, textView: TextView) {
+    val percentage = marks * 100 / total
+
+    progressBar.progress = marks
+    progressBar.max = total
+    progressBar.secondaryProgress = total
+    progressBar.progressDrawable = ContextCompat.getDrawable(this, when {
+        percentage < 50 -> R.drawable.progress_bad
+        percentage < 80 -> R.drawable.progress_mid
+        else -> R.drawable.progress_ok
+    })
+    textView.text = "$percentage%"
+    textView.setTextColor(when {
+        percentage < 50 -> 0xFFFF0000
+        percentage < 80 -> 0xFFFFAA00
+        else -> 0xFF00FF00
+    }.toInt())
+}
 
 fun Context.updateQuizzes(viewModel: QuizViewModel) =
     viewModel.updateQuizzes { id, e -> errorToast("Cannot retrive quiz $id", e) }

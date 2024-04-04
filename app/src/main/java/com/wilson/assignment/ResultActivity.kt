@@ -160,6 +160,8 @@ class ResultActivity : AppCompatActivity() {
             }
         }
 
+        markProgress(marks, quiz.totalMarks, findViewById(R.id.resultStatus), findViewById(R.id.resultPercentage))
+
         val recycler = findViewById<RecyclerView>(R.id.questionList)
 
         recycler.layoutManager = LinearLayoutManager(this)
