@@ -108,9 +108,7 @@ class QuizzesFragment : Fragment() {
                     }
 
             quizViewModel.updateQuizzes().addOnCompleteListener {
-                if (it.isSuccessful && it.result.isSuccess) {
-                    button.clearAnimation()
-                }
+                button.clearAnimation()
             }
         }
 

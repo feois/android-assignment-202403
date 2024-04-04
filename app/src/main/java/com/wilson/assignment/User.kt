@@ -178,7 +178,26 @@ class UserViewModel: ViewModel() {
             }
         } } else { userMap }
 
-        User.collection.document(username).update(combinedMap)
+        User.collection.document(username).update(combinedMap).addOnFailureListener {
+            databaseExceptionLiveData.value = it
+        }
+    }
+
+    fun updatePassword(old: String, new: String, credentialDataStore: DataStore<Preferences>? = null) = runCatching {
+        if (passwordCache != old) { throw WrongOldPasswordException() }
+
+        user.value?.run {
+            User.collection.document(username)
+                    .update(mapOf(User.PASSWORD_FIELD to HashUtils.sha256(new)))
+                    .addOnSuccessListener {
+                        passwordCache = new
+                        credentialDataStore?.let { dataStore ->
+                            viewModelScope.launch {
+                                storeCredential(dataStore, username, new)
+                            }
+                        }
+                    }
+        }
     }
 
     fun readCredential(dataStore: DataStore<Preferences>, successCallback: () -> Unit) {
