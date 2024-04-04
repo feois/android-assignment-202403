@@ -27,13 +27,25 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:backgroundTint="#FFFFFF"
+            android:backgroundTint="#00000000"
             android:contentDescription="@string/refresh_quizzes"
             android:src="@android:drawable/stat_notify_sync"
             android:tooltipText="@string/refresh_quizzes"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent"
             app:tint="#000000" />
+
+        <ProgressBar
+            android:id="@+id/progressBar"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:indeterminate="true"
+            android:indeterminateBehavior="repeat"
+            android:indeterminateOnly="true"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/search" />
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/quizList"
@@ -42,7 +54,7 @@
             app:layout_constraintBottom_toTopOf="@+id/warnLogin"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/search" />
+            app:layout_constraintTop_toBottomOf="@+id/progressBar" />
 
         <TextView
             android:id="@+id/warnLogin"

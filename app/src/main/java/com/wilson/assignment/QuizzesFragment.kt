@@ -2,7 +2,6 @@ package com.wilson.assignment
 
 import android.content.Context
 import android.os.Bundle
-import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -10,8 +9,10 @@ import android.view.animation.Animation
 import android.view.animation.RotateAnimation
 import android.widget.ImageButton
 import android.widget.ImageView
+import android.widget.ProgressBar
 import android.widget.SearchView
 import android.widget.TextView
+import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.LifecycleOwner
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -88,12 +89,18 @@ class QuizzesFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         val search = view.findViewById<SearchView>(R.id.search)
         val refresh = view.findViewById<ImageButton>(R.id.refreshQuizzes)
+        val progress = view.findViewById<ProgressBar>(R.id.progressBar)
+
+        if (quizViewModel.quizzes.value != null) {
+            progress.visibility = View.GONE
+        }
 
         quizList = view.findViewById(R.id.quizList)
         quizList.layoutManager = LinearLayoutManager(context)
 
         quizViewModel.quizzes.observe(viewLifecycleOwner) {
             quizList.adapter = getAdapter(it)
+            progress.visibility = View.GONE
         }
 
         view.findViewById<TextView>(R.id.warnLogin).visibility =
@@ -104,10 +111,13 @@ class QuizzesFragment : Fragment() {
                     Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 0.5f)
                     .apply {
                         repeatCount = -1
-                        duration = 2000
+                        duration = 1000
                     }
 
-            requireContext().updateQuizzes(quizViewModel)
+            progress.visibility = View.VISIBLE
+            requireContext().updateQuizzes(quizViewModel).addOnCompleteListener {
+                button.clearAnimation()
+            }
         }
 
         search.setOnQueryTextListener(object: SearchView.OnQueryTextListener {
