@@ -46,6 +46,8 @@ class MainActivity : AppCompatActivity(), LogInFragment.EventListener, SignUpFra
             insets
         }
 
+        logInfo("")
+
         quizViewModel.updateQuizzes()
                 .addOnSuccessListener {
                     it.exceptionOrNull()?.run { errorToast("Failed to update quiz", this) }
