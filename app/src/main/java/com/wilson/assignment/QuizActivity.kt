@@ -88,19 +88,12 @@ class QuizActivity : AppCompatActivity() {
                     val quizPages = arrayListOf<Fragment>()
 
                     val quiz = it.result.getOrNull()!!
-                    val shuffledIndexes = IntArray(quiz.questions.size).apply {
-                        forEachIndexed { index, _ ->
-                            this[index] = index
-                        }
-                    }
+                    val shuffledIndexes = if (quiz.allowReorder) { (0..<quiz.questions.size).shuffled().toIntArray() }
+                            else { IntArray(quiz.questions.size).apply { forEachIndexed { i, _ -> this[i] = i } } }
 
                     quizCache.quizLiveData.value = quiz
                     resultViewModel.blanks = (0..<quiz.questions.size).toMutableSet()
                     resultViewModel.result = BooleanArray(quiz.questions.size)
-
-                    if (quiz.allowReorder) {
-                        shuffledIndexes.shuffle()
-                    }
 
                     for (i in 0..quiz.questions.size) {
                         quizPages.add(QuestionFragment.newInstance(quiz.id, shuffledIndexes, i))

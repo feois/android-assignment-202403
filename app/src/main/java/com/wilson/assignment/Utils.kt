@@ -65,6 +65,13 @@ fun Editable.trimWhitespaces(): String {
 }
 fun String.trimWhitespaces() = this.replace("\\s+".toRegex(), " ").trimStart().trimEnd()
 
+fun Context.updateQuizzes(viewModel: QuizViewModel) =
+    viewModel.updateQuizzes { id, e -> errorToast("Cannot retrive quiz $id", e) }
+            .addOnSuccessListener {
+                it.exceptionOrNull()?.run { errorToast("Failed to update quiz", this) }
+            }
+            .addOnFailureListener { errorToast("Failed to update quiz", it) }
+
 /**
  * Hashing Utils
  * @author Sam Clarke <www.samclarke.com>

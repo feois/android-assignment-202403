@@ -10,7 +10,6 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
-import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import androidx.viewpager2.widget.ViewPager2
 import com.google.android.material.bottomnavigation.BottomNavigationView
@@ -46,11 +45,7 @@ class MainActivity : AppCompatActivity(), LogInFragment.EventListener, SignUpFra
             insets
         }
 
-        quizViewModel.updateQuizzes()
-                .addOnSuccessListener {
-                    it.exceptionOrNull()?.run { errorToast("Failed to update quiz", this) }
-                }
-                .addOnFailureListener { errorToast("Failed to update quiz", it) }
+        updateQuizzes(quizViewModel)
 
         val menu = findViewById<BottomNavigationView>(R.id.menu)
 

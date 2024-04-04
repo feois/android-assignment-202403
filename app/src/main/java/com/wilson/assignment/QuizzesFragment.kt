@@ -107,9 +107,7 @@ class QuizzesFragment : Fragment() {
                         duration = 2000
                     }
 
-            quizViewModel.updateQuizzes().addOnCompleteListener {
-                button.clearAnimation()
-            }
+            requireContext().updateQuizzes(quizViewModel)
         }
 
         search.setOnQueryTextListener(object: SearchView.OnQueryTextListener {

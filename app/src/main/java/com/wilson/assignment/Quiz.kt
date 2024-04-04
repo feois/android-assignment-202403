@@ -109,16 +109,17 @@ class QuizViewModel: ViewModel() {
     private val quizzesLiveData = MutableLiveData<List<Quiz>>()
     val quizzes: LiveData<List<Quiz>> get() = quizzesLiveData
 
-    fun updateQuizzes() = Quiz.collection.get().continueWith { task ->
+    fun updateQuizzes(errorCallback: (id: String, e: Throwable) -> Unit) = Quiz.collection.get().continueWith { task ->
         task.runCatching {
-            require(isSuccessful) { "Failed to retrieve quizzes" }
-
-            val quizList = mutableListOf<Quiz>()
-
-            result.documents.forEach {
-                it.data?.toQuiz(it.id)?.getOrThrow()?.run {
-                    quizList.add(this)
-                    quizzesLiveData.value = quizList
+            exception?.run { throw this }
+            quizzesLiveData.value = result.documents.mapNotNull { doc ->
+                doc.data?.run {
+                    toQuiz(doc.id).fold({
+                        it
+                    }) {
+                        errorCallback(doc.id, it)
+                        null
+                    }
                 }
             }
         }

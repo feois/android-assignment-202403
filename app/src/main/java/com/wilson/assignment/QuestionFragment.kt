@@ -109,16 +109,18 @@ class QuestionFragment : Fragment() {
                 val radioGroup =
                     linearLayout.getChildAt(linearLayout.childCount - 1) as RadioGroup
 
-                for (option in options) {
+                val shuffle = (0..<options.size).run { if (allowReorder) { shuffled() } else { toList() } }
+                val map = shuffle.withIndex().associate { Pair(it.value, it.index) }
+
+                for (i in 0..<options.size) {
                     layoutInflater.inflate(R.layout.quiz_radio_button, radioGroup)
 
-                    val index = radioGroup.childCount - 1
-                    val radioButton = radioGroup.getChildAt(index) as RadioButton
+                    val radioButton = radioGroup.getChildAt(i) as RadioButton
 
-                    radioButton.text = option
+                    radioButton.text = options[shuffle[i]]
                     radioButton.setOnCheckedChangeListener { _, isChecked ->
                         if (isChecked) {
-                            radioSelected = index
+                            radioSelected = shuffle[i]
                         }
                     }
                 }
@@ -127,7 +129,7 @@ class QuestionFragment : Fragment() {
                     val index = it.getInt(ARG_ANSWER, -1)
 
                     if (index != -1) {
-                        (radioGroup.getChildAt(index) as RadioButton).isChecked = true
+                        (radioGroup.getChildAt(map[index]!!) as RadioButton).isChecked = true
                     }
                 }
 
@@ -136,19 +138,20 @@ class QuestionFragment : Fragment() {
             }
 
             is Quiz.MultiselectionalObjectiveQuestion -> {
-                val initialChildCount = linearLayout.childCount
+                val childCount = linearLayout.childCount
+                val shuffle = (0..<options.size).run { if (allowReorder) { shuffled() } else { toList() } }
+                val map = shuffle.withIndex().associate { Pair(it.value, it.index) }
 
-                for (option in options) {
+                for (i in 0..<options.size) {
                     layoutInflater.inflate(R.layout.quiz_check_box, linearLayout)
 
-                    val index = linearLayout.childCount - 1
-                    val checkIndex = index - initialChildCount
-                    val checkBox = linearLayout.getChildAt(index) as CheckBox
+                    val checkBox = linearLayout.getChildAt(i + childCount) as CheckBox
+                    val index = shuffle[i]
 
-                    checkBox.text = option
+                    checkBox.text = options[index]
                     checkBox.setOnCheckedChangeListener { buttonView, isChecked ->
                         if (!isChecked) {
-                            checked.remove(checkIndex)
+                            checked.remove(index)
                             checkedCount--
                         }
                         else if (hint && checkedCount == answers.size) {
@@ -156,7 +159,7 @@ class QuestionFragment : Fragment() {
                             context?.shortToast("You cannot choose more than ${answers.size}")
                         }
                         else {
-                            checked.add(checkIndex)
+                            checked.add(index)
                             checkedCount++
                         }
                     }
@@ -170,7 +173,7 @@ class QuestionFragment : Fragment() {
                 checkedCount = 0
 
                 savedInstanceState?.getIntArray(ARG_ANSWER)?.forEach {
-                    (linearLayout.getChildAt(it) as CheckBox).isChecked = true
+                    (linearLayout.getChildAt(childCount + map[it]!!) as CheckBox).isChecked = true
                 }
 
                 blankCallback = { hint && checked.size != answers.size }
