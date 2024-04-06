@@ -23,6 +23,7 @@ fun FirestoreMap.toUser(username: String) = runCatching {
         username,
         getProp(User.FIRST_NAME_FIELD),
         getProp(User.LAST_NAME_FIELD),
+        getOrDefault(User.WARN_BLANK_FIELD, true) as Boolean,
     ).apply {
         try {
             readNotifications = getListProp<String>(User.READ_NOTIFICATIONS_FIELD).toMutableSet()
@@ -42,7 +43,10 @@ abstract class NameException(message: String, val isFirst: Boolean): IllegalArgu
 class EmptyNameException(isFirst: Boolean): NameException("Name cannot be empty", isFirst)
 class InvalidCharNameException(isFirst: Boolean): NameException("Name must only consist of only letters or space", isFirst)
 
-data class User(@DocumentId val username: String = "", val firstName: String, val lastName: String) {
+data class User(@DocumentId val username: String = "",
+                val firstName: String,
+                val lastName: String,
+                val warnBlank: Boolean = true) {
     val fullName get() = "$firstName $lastName"
 
     var readNotifications = mutableSetOf<String>()
@@ -61,6 +65,7 @@ data class User(@DocumentId val username: String = "", val firstName: String, va
         set(LAST_NAME_FIELD, lastName)
         set(READ_NOTIFICATIONS_FIELD, readNotifications.toList())
         set(QUIZ_RESULTS_FIELD, results)
+        set(WARN_BLANK_FIELD, warnBlank)
     }
 
     companion object {
@@ -70,6 +75,7 @@ data class User(@DocumentId val username: String = "", val firstName: String, va
         const val LAST_NAME_FIELD = "lastName"
         const val READ_NOTIFICATIONS_FIELD = "read"
         const val QUIZ_RESULTS_FIELD = "results"
+        const val WARN_BLANK_FIELD = "warn blank"
 
         const val MIN_PASSWORD_LENGTH = 8
 

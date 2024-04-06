@@ -7,6 +7,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.TextView
+import androidx.appcompat.widget.SwitchCompat
 import androidx.fragment.app.activityViewModels
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
@@ -39,6 +40,7 @@ class UserProfileFragment : Fragment() {
         val newPasswordText = view.findViewById<TextInputEditText>(R.id.newPasswordText)
         val confirmPassword = view.findViewById<TextInputLayout>(R.id.confirmPassword)
         val confirmPasswordText = view.findViewById<TextInputEditText>(R.id.confirmPasswordText)
+        val warnBlankSwitch = view.findViewById<SwitchCompat>(R.id.warnBlank)
         val confirmEdit = view.findViewById<Button>(R.id.confirmEdit)
 
         logoutButton.setOnClickListener { userViewModel.logout(context) }
@@ -55,6 +57,7 @@ class UserProfileFragment : Fragment() {
                 """.trimIndent()
                 editFirstNameText.text?.setString(firstName)
                 editLastNameText.text?.setString(lastName)
+                warnBlankSwitch.isChecked = warnBlank
             }
         }
 
@@ -96,6 +99,7 @@ class UserProfileFragment : Fragment() {
                 userViewModel.updateUser(mapOf(
                     User.FIRST_NAME_FIELD to newFirstName,
                     User.LAST_NAME_FIELD to newLastName,
+                    User.WARN_BLANK_FIELD to warnBlankSwitch.isChecked,
                 ))?.addOnSuccessListener {
                     requireContext().shortToast("Successfully updated profile information")
                 }
