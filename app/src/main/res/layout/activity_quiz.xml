@@ -32,6 +32,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
+            android:backgroundTint="#FFA500"
             android:contentDescription="@string/prev_quiz"
             app:srcCompat="@android:drawable/ic_media_rew" />
 
@@ -48,6 +49,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
+            android:backgroundTint="#FFA500"
             android:contentDescription="@string/next_quiz"
             app:srcCompat="@android:drawable/ic_media_ff" />
 
