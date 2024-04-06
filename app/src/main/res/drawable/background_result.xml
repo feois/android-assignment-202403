@@ -6,7 +6,7 @@
             <size
                 android:width="412dp"
                 android:height="220dp" />
-            <solid android:color="#FFAD2B" />
+            <solid android:color="#FFCB76" />
             <corners
                 android:bottomRightRadius="100dp"/>
         </shape>

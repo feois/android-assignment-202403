@@ -3,6 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/main"
+    android:translationZ="2dp"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context=".NotificationActivity">
@@ -37,7 +38,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="32dp"
         android:layout_marginStart="20dp"
-        android:textSize="16dp"
+        android:textSize="16sp"
         app:layout_constraintStart_toStartOf="@+id/notificationFullTitle"
         app:layout_constraintTop_toBottomOf="@+id/notificationFullTitle" />
 
@@ -52,7 +53,7 @@
         android:fontFamily="@font/averia_libre_light"
         android:lineSpacingExtra="8sp"
         android:padding="20dp"
-        android:textSize="20dp"
+        android:textSize="20sp"
         android:textStyle="bold"
         app:layout_constraintStart_toStartOf="@+id/notificationFullTitle"
         app:layout_constraintTop_toBottomOf="@+id/notificationFullTime" />

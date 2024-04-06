@@ -10,15 +10,6 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
-        <ImageView
-            android:id="@+id/imageView"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:src="@drawable/background_notification"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent"/>
-
         <TextView
             android:id="@+id/profileUsername"
             android:layout_width="0dp"
@@ -30,7 +21,7 @@
             android:fontFamily="@font/acme"
             android:gravity="center_vertical"
             android:lineSpacingExtra="8sp"
-            android:textSize="24dp"
+            android:textSize="24sp"
             app:drawableStartCompat="@drawable/ic_launcher_background"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"

@@ -14,41 +14,11 @@
         android:translationZ="1dp"
         android:layout_marginTop="100dp"/>
 
-    <ImageView
-        android:id="@+id/imageView"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:src="@drawable/background_notification" />
-
-    <ImageView
-        android:id="@+id/imageView2"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginLeft="-20dp"
-        android:layout_marginTop="40dp"
-        android:src="@drawable/backgroundcircle_notification" />
-
-    <ImageView
-        android:id="@+id/imageView3"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginLeft="200dp"
-        android:layout_marginTop="20dp"
-        android:src="@drawable/backgroundcircle_notification" />
-
-    <ImageView
-        android:id="@+id/imageView4"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginLeft="170dp"
-        android:layout_marginTop="180dp"
-        android:src="@drawable/backgroundcircle_notification" />
-
     <TextView
         android:id="@+id/textView4"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginLeft="80dp"
+        android:layout_marginStart="80dp"
         android:layout_marginTop="50dp"
         android:fontFamily="@font/aclonica"
         android:text="Notifications"
