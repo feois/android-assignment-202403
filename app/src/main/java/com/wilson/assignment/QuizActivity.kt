@@ -4,6 +4,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.widget.Button
 import android.widget.ImageButton
+import androidx.activity.addCallback
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
@@ -37,6 +38,7 @@ class QuizActivity : AppCompatActivity() {
     private val resultViewModel: ResultViewModel by viewModels()
 
     private var isWarning = false
+    private var isExiting = false
 
     private val submitDialogBuilder by lazy {
         AlertDialog.Builder(this)
@@ -79,95 +81,100 @@ class QuizActivity : AppCompatActivity() {
                     errorToast("Failed to retrieve quiz $quizId", this)
                 }
 
-                if (it.isSuccessful && it.result.isSuccess) {
-                    val pager = findViewById<ViewPager2>(R.id.quizPager)
-                    val prevQuiz = findViewById<ImageButton>(R.id.prevQuiz)
-                    val nextQuiz = findViewById<ImageButton>(R.id.nextQuiz)
-                    val submitQuiz = findViewById<Button>(R.id.submit)
+                initQuiz(it.result?.getOrNull())
+            }
+        }
+    }
 
-                    val quizPages = arrayListOf<Fragment>()
+    private fun initQuiz(quiz: Quiz?) = quiz?.run {
+        val pager = findViewById<ViewPager2>(R.id.quizPager)
+        val prevQuiz = findViewById<ImageButton>(R.id.prevQuiz)
+        val nextQuiz = findViewById<ImageButton>(R.id.nextQuiz)
+        val submitQuiz = findViewById<Button>(R.id.submit)
 
-                    val quiz = it.result.getOrNull()!!
-                    val shuffledIndexes = if (quiz.allowReorder) { (0..<quiz.questions.size).shuffled().toIntArray() }
-                            else { IntArray(quiz.questions.size).apply { forEachIndexed { i, _ -> this[i] = i } } }
+        val count = questions.size
+        val shuffledIndexes = if (allowReorder) { questions.indices.shuffled().toIntArray() }
+                else { IntArray(questions.size).apply { forEachIndexed { i, _ -> this[i] = i } } }
+        val quizPages = questions.indices.map { QuestionFragment.newInstance(id, shuffledIndexes, it) }
 
-                    quizCache.quizLiveData.value = quiz
-                    resultViewModel.blanks = (0..<quiz.questions.size).toMutableSet()
-                    resultViewModel.result = BooleanArray(quiz.questions.size)
+        quizCache.quizLiveData.value = this
+        resultViewModel.blanks = questions.indices.toMutableSet()
+        resultViewModel.result = BooleanArray(questions.size)
 
-                    for (i in 0..quiz.questions.size) {
-                        quizPages.add(QuestionFragment.newInstance(quiz.id, shuffledIndexes, i))
-                    }
+        pager.adapter = object : FragmentStateAdapter(this@QuizActivity) {
+            override fun getItemCount() = count
+            override fun createFragment(position: Int) = quizPages[position]
+        }
 
-                    pager.adapter = object : FragmentStateAdapter(this) {
-                        override fun getItemCount() = quiz.questions.size
-                        override fun createFragment(position: Int) = quizPages[position]
-                    }
+        pager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
+            override fun onPageSelected(position: Int) {
+                prevQuiz.isEnabled = position > 0
+                nextQuiz.isEnabled = position + 1 < count
+                submitQuiz.isEnabled = !nextQuiz.isEnabled
+                isWarning = false
+            }
+        })
 
-                    pager.registerOnPageChangeCallback(object :
-                        ViewPager2.OnPageChangeCallback() {
-                        override fun onPageSelected(position: Int) {
-                            prevQuiz.isEnabled = position > 0
-                            nextQuiz.isEnabled = position + 1 < pager.adapter!!.itemCount
-                            submitQuiz.isEnabled = !nextQuiz.isEnabled
-                            isWarning = false
-                        }
-                    })
+        resultViewModel.blankRequestNotifier.observe(this@QuizActivity) {
+            resultViewModel.requestBlank.value = null
 
-                    resultViewModel.blankRequestNotifier.observe(this) {
-                        resultViewModel.requestBlank.value = null
-
-                        if (isWarning) {
-                            if (resultViewModel.blanks.contains(pager.currentItem)) {
-                                longToast("You haven't answered yet! Press again to skip")
-                            }
-                            else {
-                                nextQuiz.callOnClick()
-                            }
-                        }
-                    }
-
-                    resultViewModel.resultRequestNotifier.observe(this) {
-                        resultViewModel.requestResult.value = null
-
-                        submitDialog?.dismiss()
-
-                        if (resultViewModel.blanks.isNotEmpty()) {
-                            AlertDialog.Builder(this)
-                                    .setTitle("Some questions are unanswered")
-                                    .setMessage("Do you still want to submit?")
-                                    .setPositiveButton("Yes") { _, _ ->
-                                        submit()
-                                    }
-                                    .setNegativeButton("No") { _, _ ->
-                                        pager.currentItem = resultViewModel.blanks.first()
-                                    }
-                                    .show()
-                        }
-                        else {
-                            submit()
-                        }
-                    }
-
-                    prevQuiz.setOnClickListener { pager.currentItem -= 1 }
-                    prevQuiz.setOnLongClickListener { pager.currentItem = 0; true }
-                    nextQuiz.setOnClickListener {
-                        isWarning = !isWarning
-
-                        if (isWarning) {
-                            resultViewModel.requestBlank.value = pager.currentItem
-                        }
-                        else {
-                            pager.currentItem += 1
-                        }
-                    }
-                    nextQuiz.setOnLongClickListener { pager.currentItem = pager.adapter!!.itemCount - 1; true }
-                    submitQuiz.setOnClickListener {
-                        submitDialog = submitDialogBuilder.show()
-                        resultViewModel.requestResult.value = Unit
-                    }
+            if (isWarning) {
+                if (resultViewModel.blanks.contains(pager.currentItem)) {
+                    longToast("You haven't answered yet! Press again to skip")
+                }
+                else {
+                    nextQuiz.callOnClick()
                 }
             }
+        }
+
+        resultViewModel.resultRequestNotifier.observe(this@QuizActivity) {
+            resultViewModel.requestResult.value = null
+
+            submitDialog?.dismiss()
+
+            if (resultViewModel.blanks.isNotEmpty()) {
+                AlertDialog.Builder(this@QuizActivity)
+                        .setTitle("Some questions are unanswered")
+                        .setMessage("Do you still want to submit?")
+                        .setPositiveButton("Yes") { _, _ ->
+                            submit()
+                        }
+                        .setNegativeButton("No") { _, _ ->
+                            pager.currentItem = resultViewModel.blanks.first()
+                        }
+                        .show()
+            }
+            else {
+                submit()
+            }
+        }
+
+        prevQuiz.setOnClickListener { pager.currentItem -= 1 }
+        prevQuiz.setOnLongClickListener { pager.currentItem = 0; true }
+        nextQuiz.setOnClickListener {
+            isWarning = !isWarning
+
+            if (isWarning) {
+                resultViewModel.requestBlank.value = pager.currentItem
+            }
+            else {
+                pager.currentItem += 1
+            }
+        }
+        nextQuiz.setOnLongClickListener { pager.currentItem = count - 1; true }
+        submitQuiz.setOnClickListener {
+            submitDialog = submitDialogBuilder.show()
+            resultViewModel.requestResult.value = Unit
+        }
+
+        onBackPressedDispatcher.addCallback(this@QuizActivity) {
+            AlertDialog.Builder(this@QuizActivity)
+                    .setTitle("Exit")
+                    .setMessage("Are you sure you want to exit? Your progress won't be saved!")
+                    .setPositiveButton("Yes") { _, _ -> finish() }
+                    .setNegativeButton("No") { _, _ -> }
+                    .show()
         }
     }
 
