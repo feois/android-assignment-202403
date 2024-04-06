@@ -151,7 +151,6 @@
             android:id="@+id/logInLink"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="32dp"
             android:backgroundTint="#00FFFFFF"
             android:text="@string/log_in_link"
             android:textColor="#2196F3"
