@@ -26,6 +26,9 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="16dp"
             android:text="TextView"
+            android:fontFamily="@font/acme"
+            android:textStyle="bold"
+            android:textSize="18dp"
             app:layout_constraintStart_toEndOf="@+id/quizStar"
             app:layout_constraintTop_toTopOf="@+id/quizStar" />
 
@@ -34,6 +37,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="TextView"
+            android:fontFamily="@font/acme"
             app:layout_constraintStart_toStartOf="@+id/quizName"
             app:layout_constraintTop_toBottomOf="@+id/quizName" />
 
