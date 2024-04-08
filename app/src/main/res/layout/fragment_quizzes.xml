@@ -16,7 +16,7 @@
             android:layout_height="wrap_content"
             android:iconifiedByDefault="false"
             android:queryHint="@string/search_hint"
-            app:layout_constraintEnd_toEndOf="@+id/refreshQuizzes"
+            app:layout_constraintEnd_toStartOf="@+id/refreshQuizzes"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent">
 
