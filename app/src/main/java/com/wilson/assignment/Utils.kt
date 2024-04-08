@@ -13,8 +13,11 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
 import com.google.firebase.Firebase
+import com.google.firebase.Timestamp
 import com.google.firebase.firestore.firestore
 import java.security.MessageDigest
+import java.text.SimpleDateFormat
+import java.util.Locale
 import kotlin.reflect.KClass
 
 abstract class PropertyException(message: String): IllegalArgumentException(message)
@@ -30,6 +33,9 @@ const val LOG_TAG = "myass"
 fun logInfo(s: String) = Log.i(LOG_TAG, s)
 fun logWarning(s: String, e: Throwable? = null) = Log.w(LOG_TAG, s, e)
 fun logError(s: String, e: Throwable? = null) = Log.e(LOG_TAG, s, e)
+
+fun formatTime(timestamp: Timestamp) = SimpleDateFormat("H:m:s E d MMM y", Locale.getDefault())
+        .format(timestamp.toDate())
 
 fun Context.shortToast(s: String) = Toast.makeText(this, s, Toast.LENGTH_SHORT).show()
 fun Context.longToast(s: String) = Toast.makeText(this, s, Toast.LENGTH_LONG).show()

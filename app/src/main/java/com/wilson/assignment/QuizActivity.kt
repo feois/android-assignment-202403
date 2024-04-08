@@ -17,6 +17,8 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import androidx.viewpager2.widget.ViewPager2
+import com.google.firebase.Timestamp
+import java.util.Date
 
 class ResultViewModel: ViewModel() {
     var result = booleanArrayOf()
@@ -187,6 +189,12 @@ class QuizActivity : AppCompatActivity() {
                 results.put(id, marks)
                 userViewModel.updateUser()
                 intent.putExtra(ResultActivity.INTENT_USERNAME, username)
+
+                db.collection("items").document().set(mapOf(
+                    "username" to username,
+                    "quizId" to id,
+                    "time" to Timestamp(Date()),
+                ))
             }
 
             intent.putExtra(ResultActivity.INTENT_QUID_ID, id)

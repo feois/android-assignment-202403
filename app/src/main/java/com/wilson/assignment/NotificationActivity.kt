@@ -27,7 +27,7 @@ class NotificationActivity : AppCompatActivity() {
                     .addOnSuccessListener {
                         it?.run {
                             findViewById<TextView>(R.id.notificationFullTitle).text = title
-                            findViewById<TextView>(R.id.notificationFullTime).text = formatTime()
+                            findViewById<TextView>(R.id.notificationFullTime).text = formatTime(time)
                             findViewById<TextView>(R.id.notificationContent).text = content
                         } ?: errorToast("Notification format error", IllegalArgumentException())
                     }

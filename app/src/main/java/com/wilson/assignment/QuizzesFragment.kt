@@ -108,7 +108,7 @@ class QuizzesFragment : Fragment() {
         }
 
         quizList = view.findViewById(R.id.quizList)
-        quizList.layoutManager = LinearLayoutManager(context)
+        quizList.layoutManager = LinearLayoutManager(requireContext())
 
         quizViewModel.quizzes.observe(viewLifecycleOwner) {
             quizList.adapter = getAdapter(it)

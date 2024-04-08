@@ -108,11 +108,13 @@ fun FirestoreMap.toQuiz(id: String) = runCatching {
 class QuizViewModel: ViewModel() {
     private val quizzesLiveData = MutableLiveData<List<Quiz>>()
     val quizzes: LiveData<List<Quiz>> get() = quizzesLiveData
+    var quizzesMap: Map<String, Quiz> = mapOf(); private set
 
     fun updateQuizzes(errorCallback: (id: String, e: Throwable) -> Unit) = Quiz.collection.get().continueWith { task ->
         task.runCatching {
             exception?.run { throw this }
-            quizzesLiveData.value = result.documents.mapNotNull { doc ->
+
+            val list = result.documents.mapNotNull { doc ->
                 doc.data?.run {
                     toQuiz(doc.id).fold({
                         it
@@ -122,6 +124,9 @@ class QuizViewModel: ViewModel() {
                     }
                 }
             }
+
+            quizzesMap = list.associateBy { it.id }
+            quizzesLiveData.value = list
         }
     }
 }

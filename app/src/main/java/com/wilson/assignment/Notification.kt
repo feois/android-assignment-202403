@@ -17,6 +17,4 @@ data class Notification(@DocumentId val id: String = "",
             doc.takeIf { it.isSuccessful }?.result?.toObject<Notification>()
         }
     }
-
-    fun formatTime() = SimpleDateFormat("H:m:s E d MMM y", Locale.getDefault()).format(time.toDate())
 }

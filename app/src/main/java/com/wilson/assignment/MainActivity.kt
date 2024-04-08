@@ -21,6 +21,7 @@ class TabsAdapter(fragmentActivity: FragmentActivity, private val tabs: Array<Fr
 
 class MainActivity : AppCompatActivity(), LogInFragment.EventListener, SignUpFragment.EventListener {
     private val quizzesFragment = QuizzesFragment()
+    private val blankFragment = BlankFragment()
     private val notificationsFragment = NotificationsFragment()
     private val userProfileFragment = UserProfileFragment()
     private val logInFragment = LogInFragment()
@@ -31,7 +32,7 @@ class MainActivity : AppCompatActivity(), LogInFragment.EventListener, SignUpFra
 
     private lateinit var accountFragment: Fragment
 
-    private val fragments get() = arrayOf(quizzesFragment, notificationsFragment, accountFragment)
+    private val fragments get() = arrayOf(quizzesFragment, blankFragment, notificationsFragment, accountFragment)
 
     private lateinit var tabs: ViewPager2
 
@@ -67,8 +68,9 @@ class MainActivity : AppCompatActivity(), LogInFragment.EventListener, SignUpFra
         menu.setOnItemSelectedListener {
             tabs.currentItem = when (it.itemId) {
                 R.id.quizzes -> 0
-                R.id.notifications -> 1
-                R.id.user_profile -> 2
+                R.id.testMenuItem -> 1
+                R.id.notifications -> 2
+                R.id.user_profile -> 3
                 else -> 0
             }
             true

@@ -30,7 +30,7 @@ class NotificationsAdapter(private val context: Context,
             notification = n
 
             titleText.text = n.title
-            timeText.text = n.formatTime()
+            timeText.text = formatTime(n.time)
 
             view.setOnClickListener {
                 readCallback(n)
